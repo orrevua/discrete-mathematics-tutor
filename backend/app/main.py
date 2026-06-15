@@ -24,6 +24,7 @@ DB_PATH = Path(__file__).resolve().parent.parent / "its.db"
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://discrete-mathematics-tutor.vercel.app",
 ]
 
 
