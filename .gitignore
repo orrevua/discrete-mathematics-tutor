@@ -1,0 +1,40 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies / build output
+node_modules/
+dist/
+build/
+coverage/
+__pycache__/
+*.pyc
+
+# Backend (Python)
+backend/.venv/
+backend/its.db
+.pytest_cache/
+
+# Frontend (Next.js)
+frontend/.next/
+frontend/.env.local
+next-env.d.ts
+
+# Docs and markdown (keep README only)
+docs/
+*.md
+!README.md
