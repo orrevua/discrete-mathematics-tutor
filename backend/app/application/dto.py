@@ -45,3 +45,13 @@ class Recommendation:
 class ChatMessage:
     role: str  # "user" | "assistant"
     content: str
+
+
+@dataclass(frozen=True)
+class GeneratedQuestion:
+    id: str # Unique ID for this generated question
+    stem: str
+    options: tuple[str, ...]
+    correct_index: int
+    solution: str
+    difficulty: float

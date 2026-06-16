@@ -25,7 +25,10 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<AnswersResponse | null>(null);
   const [nextBlockId, setNextBlockId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [nextReason, setNextReason] = useState<string>("");
+  const [submittingGraded, setSubmittingGraded] = useState(false);
+  const [generatingQuestion, setGeneratingQuestion] = useState<string | null>(null); // Stores qid being generated
+  const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, PublicQuestion>>({});
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -50,7 +53,12 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             const restored: Record<string, number> = {};
             for (const r of prev.graded) restored[r.question_id] = r.selected_index;
             setAnswers(restored);
+            // Also restore the result and fetch the next recommendation
             setResult({ results: prev.graded, updated_concepts: [], global_percent: 0 });
+            api.getRecommendation().then((rec) => {
+              setNextBlockId(rec.next_block_id);
+              setNextReason(rec.reason);
+            }).catch(() => {});
           }
           if (prev.practice.length > 0) {
             const restored: Record<string, number> = {};
@@ -73,29 +81,66 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   if (error) return <div className="loading">{error}</div>;
   if (!block) return <div className="loading">Carregando bloco…</div>;
 
-  const allAnswered = block.questions.every((q) => answers[q.id] !== undefined);
+  const allAnswered = block.questions.every((q) => {
+    const displayedQuestion = generatedQuestions[q.id] || q;
+    return answers[displayedQuestion.id] !== undefined;
+  });
+
   const allPracticeAnswered =
     block.practice.length > 0 && block.practice.every((q) => practiceAnswers[q.id] !== undefined);
 
-  function feedbackFrom(results: AnswerResult[] | undefined, questionId: string): Feedback | null {
-    const r = results?.find((x) => x.question_id === questionId);
+  // Re-define allAnswered here to use the dynamic questions
+  const confirmPayload = block.questions.map((q) => {
+    const displayedQuestion = generatedQuestions[q.id] || q;
+    return {
+      question_id: displayedQuestion.id,
+      selected_index: answers[displayedQuestion.id],
+    };
+  });
+
+  function feedbackFrom(results: AnswerResult[] | undefined, displayedQuestionId: string): Feedback | null {
+    const r = results?.find((x) => x.question_id === displayedQuestionId);
     return r
       ? { correct_index: r.correct_index, selected_index: r.selected_index, solution: r.solution }
       : null;
   }
 
   async function confirm() {
-    setSubmitting(true);
-    const payload = block!.questions.map((q) => ({ question_id: q.id, selected_index: answers[q.id] }));
+    setSubmittingGraded(true);
     try {
-      const res = await api.submitBlockAnswers(block!.id, payload);
+      const res = await api.submitBlockAnswers(block!.id, confirmPayload);
       setResult(res);
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
+      setNextReason(rec.reason);
     } catch {
       setError("Erro ao enviar respostas.");
     } finally {
-      setSubmitting(false);
+      setSubmittingGraded(false);
+    }
+  }
+
+  async function handleGenerateQuestion(
+    originalQuestionId: string,
+    incorrectAnswerIndex: number | null,
+  ) {
+    if (!block) return;
+    setGeneratingQuestion(originalQuestionId);
+    try {
+      const incorrectAnswerText = incorrectAnswerIndex !== null ?
+        block.questions.find(q => q.id === originalQuestionId)?.options[incorrectAnswerIndex] : null;
+
+      const newQ = await api.generateQuestion(
+        block.id,
+        originalQuestionId,
+        incorrectAnswerText ?? undefined,
+      );
+      setGeneratedQuestions((prev) => ({ ...prev, [originalQuestionId]: newQ }));
+      setAnswers((prev) => ({ ...prev, [originalQuestionId]: newQ.id })); // Mark as answered
+    } catch (err: any) {
+      setError(`Erro ao gerar nova questão: ${err.message}`);
+    } finally {
+      setGeneratingQuestion(null);
     }
   }
 
@@ -146,25 +191,46 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       <h2>Questões avaliadas</h2>
       <p className="practice-intro">Estas questões medem seu domínio do conceito.</p>
       <div className="card">
-        {block.questions.map((q, i) => (
-          <QuestionCard
-            key={q.id}
-            question={q}
-            index={i}
-            selected={answers[q.id] ?? null}
-            onSelect={(opt) => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-            feedback={feedbackFrom(result?.results, q.id)}
-          />
-        ))}
+        {block.questions.map((q, i) => {
+          const originalQuestionId = q.id;
+          const displayedQuestion = generatedQuestions[originalQuestionId] || q;
+          const feedback = feedbackFrom(result?.results, originalQuestionId);
+          const isIncorrect = feedback?.correct === false;
+          const isGenerating = generatingQuestion === originalQuestionId;
+
+          return (
+            <div key={originalQuestionId}>
+              <QuestionCard
+                question={displayedQuestion}
+                index={i}
+                selected={answers[displayedQuestion.id] ?? null}
+                onSelect={(opt) => setAnswers((a) => ({ ...a, [displayedQuestion.id]: opt }))}
+                feedback={feedback}
+              />
+              {result && isIncorrect && !generatedQuestions[originalQuestionId] && (
+                <button
+                  className="btn light-primary"
+                  onClick={() => handleGenerateQuestion(originalQuestionId, feedback?.selected_index ?? null)}
+                  disabled={isGenerating}
+                  type="button"
+                  style={{ marginTop: "10px" }}
+                >
+                  {isGenerating ? "Gerando..." : "Gerar nova questão"}
+                </button>
+              )}
+            </div>
+          );
+        })}
 
         {!result ? (
-          <button className="btn" onClick={confirm} disabled={!allAnswered || submitting} type="button">
-            {submitting ? "Enviando…" : "Confirmar respostas"}
+          <button className="btn" onClick={confirm} disabled={!allAnswered || submittingGraded} type="button">
+            {submittingGraded ? "Enviando…" : "Confirmar respostas"}
           </button>
         ) : (
           <BlockResult
             result={result}
             nextBlockId={nextBlockId}
+            nextReason={nextReason}
             onNext={(id) => router.push(ROUTES.block(id))}
           />
         )}

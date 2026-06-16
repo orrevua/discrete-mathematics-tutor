@@ -81,6 +81,13 @@ export const api = {
   getDiagnostic: () => get<Diagnostic>("/diagnostic"),
   submitDiagnostic: (answers: AnswerInput[]) =>
     post<DiagnosticSubmitResponse>("/diagnostic/submit", { answers }),
+  resetDiagnostic: () => post<State>("/diagnostic/reset", {}),
+  generateQuestion: (conceptId: string, originalQuestionId?: string, incorrectAnswer?: string) =>
+    post<GeneratedQuestion>(`/blocks/${conceptId}/generate_question`, {
+      concept_id: conceptId,
+      original_question_id: originalQuestionId,
+      incorrect_answer: incorrectAnswer,
+    }),
   // Surfaces the server's detail message (e.g. "tutor não configurado").
   tutor: async (id: string, messages: TutorMessage[]): Promise<{ reply: string }> => {
     const res = await fetch(`${BASE}/blocks/${id}/tutor`, {

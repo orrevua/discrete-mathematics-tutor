@@ -133,6 +133,29 @@ def tutor(
         raise HTTPException(status_code=502, detail=str(e))
 
 
+@router.post("/blocks/{concept_id}/generate_question", response_model=schemas.GenerateQuestionResponse)
+def generate_question(
+    concept_id: str,
+    payload: schemas.GenerateQuestionRequest,
+    svc: TutoringService = Depends(get_service),
+):
+    try:
+        return svc.generate_new_question(
+            concept_id=concept_id,
+            original_question_id=payload.original_question_id,
+            incorrect_answer=payload.incorrect_answer,
+        )
+    except ConceptNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except TutorNotConfigured:
+        raise HTTPException(
+            status_code=503,
+            detail="Tutor não configurado para geração de questões. Defina TUTOR_API_KEY no backend/.env.",
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @router.get("/diagnostic", response_model=schemas.DiagnosticResponse)
 def get_diagnostic(svc: TutoringService = Depends(get_service)):
     return presenters.diagnostic(svc.get_diagnostic())
@@ -152,3 +175,9 @@ def submit_diagnostic(
     return schemas.DiagnosticSubmitResponse(
         diagnostic_done=True, mastery=presenters.mastery(overview)
     )
+
+
+@router.post("/diagnostic/reset", response_model=schemas.StateResponse)
+def reset_diagnostic(svc: TutoringService = Depends(get_service), user_id: str = Depends(get_user_id)):
+    svc.reset_diagnostic(user_id)
+    return presenters.state(svc.get_state(user_id))

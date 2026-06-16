@@ -16,6 +16,8 @@ interface ConceptMeta {
 }
 
 const RESET_PHRASE = "resetar meu progresso";
+const RESET_DIAGNOSTIC_PHRASE = "refazer diagnóstico";
+const LOW_MASTERY_THRESHOLD = 20; // %
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -23,7 +25,8 @@ export default function DashboardPage() {
   const [mastery, setMastery] = useState<MasteryState | null>(null);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [error, setError] = useState(false);
-  const [showReset, setShowReset] = useState(false);
+  const [showResetProgress, setShowResetProgress] = useState(false);
+  const [showResetDiagnostic, setShowResetDiagnostic] = useState(false);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
 
   const load = useCallback(() => {
@@ -46,15 +49,26 @@ export default function DashboardPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  async function handleReset() {
+  async function handleResetProgressConfirm() {
     try {
       await api.resetProgress();
-      setShowReset(false);
+      setShowResetProgress(false);
       load();
       setToast({ type: "ok", msg: "Progresso resetado com sucesso." });
     } catch {
-      setShowReset(false);
+      setShowResetProgress(false);
       setToast({ type: "err", msg: "Não foi possível resetar o progresso. Tente novamente." });
+    }
+  }
+
+  async function handleResetDiagnosticConfirm() {
+    try {
+      await api.resetDiagnostic();
+      setShowResetDiagnostic(false);
+      router.push(ROUTES.diagnostic);
+    } catch {
+      setShowResetDiagnostic(false);
+      setToast({ type: "err", msg: "Não foi possível resetar o diagnóstico. Tente novamente." });
     }
   }
 
@@ -81,6 +95,9 @@ export default function DashboardPage() {
 
   const units = [...new Set(graph.nodes.map((n) => n.unit))].sort((a, b) => a - b);
 
+  const canResetDiagnostic =
+    state.diagnostic_done && mastery.global_percent <= LOW_MASTERY_THRESHOLD;
+
   return (
     <div>
       <h1>Seu progresso em FMC2</h1>
@@ -93,15 +110,26 @@ export default function DashboardPage() {
         </div>
         <ProgressBar percent={mastery.global_percent} />
         <div className="spacer" />
-        {!state.diagnostic_done ? (
-          <Link href={ROUTES.diagnostic} className="btn">
-            Fazer diagnóstico inicial
-          </Link>
-        ) : (
-          <button className="btn" onClick={continueStudying} type="button">
-            Continuar estudando →
-          </button>
-        )}
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          {!state.diagnostic_done ? (
+            <Link href={ROUTES.diagnostic} className="btn">
+              Fazer diagnóstico inicial
+            </Link>
+          ) : (
+            <button className="btn" onClick={continueStudying} type="button">
+              Continuar estudando →
+            </button>
+          )}
+          {canResetDiagnostic && (
+            <button
+              className="btn light-danger"
+              onClick={() => setShowResetDiagnostic(true)}
+              type="button"
+            >
+              Refazer diagnóstico
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="stat-row">
@@ -131,20 +159,31 @@ export default function DashboardPage() {
             Resetar seu progresso apaga todo o seu domínio, o histórico de respostas e o
             diagnóstico. Esta ação não pode ser desfeita.
           </span>
-          <button className="btn danger" onClick={() => setShowReset(true)} type="button">
+          <button className="btn danger" onClick={() => setShowResetProgress(true)} type="button">
             Resetar progresso
           </button>
         </div>
       </section>
 
-      {showReset && (
+      {showResetProgress && (
         <ConfirmDangerModal
           title="Resetar progresso"
           description="Isto vai apagar permanentemente todo o seu domínio, histórico e diagnóstico. Não há como recuperar."
-          phrase={RESET_PHRASE}
+          phrase={RESET_PROGRESS_PHRASE}
           confirmLabel="Resetar progresso"
-          onConfirm={handleReset}
-          onClose={() => setShowReset(false)}
+          onConfirm={handleResetProgressConfirm}
+          onClose={() => setShowResetProgress(false)}
+        />
+      )}
+
+      {showResetDiagnostic && (
+        <ConfirmDangerModal
+          title="Refazer diagnóstico"
+          description="Isto vai apagar seu histórico de respostas do diagnóstico, permitindo que você o refaça. Seu progresso em conceitos já desbloqueados será mantido."
+          phrase={RESET_DIAGNOSTIC_PHRASE}
+          confirmLabel="Refazer diagnóstico"
+          onConfirm={handleResetDiagnosticConfirm}
+          onClose={() => setShowResetDiagnostic(false)}
         />
       )}
 

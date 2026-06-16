@@ -55,3 +55,7 @@ class ProgressRepository(Protocol):
     def reset(self, user_id: str) -> None:
         """Erase this user's progress (mastery, answer log, flags)."""
         ...
+
+    def clear_diagnostic_status(self, user_id: str) -> None:
+        """Clear the diagnostic completion status for a user."""
+        ...

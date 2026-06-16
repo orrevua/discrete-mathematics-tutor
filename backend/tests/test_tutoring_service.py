@@ -3,6 +3,32 @@ decouple the application from SQLite (no DB needed to test use cases).
 """
 from app.application.tutoring_service import TutoringService
 from app.domain.models import Concept, Question
+from app.ports.tutor import TutorPort
+from app.application.dto import GeneratedQuestion, ChatMessage
+
+
+class FakeTutor(TutorPort):
+    def is_configured(self) -> bool:
+        return True
+
+    def reply(self, system_prompt: str, messages: Sequence[ChatMessage]) -> str:
+        return "Fake tutor reply"
+
+    def generate_question(
+        self,
+        concept_content: str,
+        concept_id: str,
+        original_question_id: str | None = None,
+        incorrect_answer: str | None = None,
+    ) -> GeneratedQuestion:
+        return GeneratedQuestion(
+            id="gen-fake-q1",
+            stem="Fake generated question",
+            options=("a", "b", "c", "d"),
+            correct_index=0,
+            solution="Fake solution",
+            difficulty=0.5,
+        )
 
 
 class FakeProgress:
@@ -75,7 +101,7 @@ def _block(cid):
 def test_submit_block_answers_updates_mastery_and_grades():
     content = FakeContent([_block("a")])
     progress = FakeProgress()
-    svc = TutoringService(content, progress)
+    svc = TutoringService(content, progress, tutor=FakeTutor())
 
     result = svc.submit_block_answers("u1", "a", [("a-q1", 0), ("a-q2", 1)])
 
@@ -89,7 +115,7 @@ def test_submit_diagnostic_marks_done_and_seeds():
     diag = [_question("diag-1", "a", correct=0)]
     content = FakeContent([_block("a")], diagnostic=diag)
     progress = FakeProgress()
-    svc = TutoringService(content, progress)
+    svc = TutoringService(content, progress, tutor=FakeTutor())
 
     overview = svc.submit_diagnostic("u1", [("diag-1", 0)])
 
@@ -101,7 +127,7 @@ def test_submit_diagnostic_marks_done_and_seeds():
 def test_progress_is_isolated_per_user():
     content = FakeContent([_block("a")])
     progress = FakeProgress()
-    svc = TutoringService(content, progress)
+    svc = TutoringService(content, progress, tutor=FakeTutor())
 
     svc.submit_block_answers("u1", "a", [("a-q1", 0)])
     # u2 has not answered anything → independent, empty progress
@@ -113,6 +139,6 @@ def test_get_block_unknown_raises():
     from app.application.errors import ConceptNotFound
     import pytest
 
-    svc = TutoringService(FakeContent([_block("a")]), FakeProgress())
+    svc = TutoringService(FakeContent([_block("a")]), FakeProgress(), tutor=FakeTutor())
     with pytest.raises(ConceptNotFound):
         svc.get_block("nope")

@@ -8,10 +8,11 @@ import LevelBadge from "@/components/ui/LevelBadge";
 interface Props {
   result: AnswersResponse;
   nextBlockId: string | null;
+  nextReason: string;
   onNext: (id: string) => void;
 }
 
-export default function BlockResult({ result, nextBlockId, onNext }: Props) {
+export default function BlockResult({ result, nextBlockId, nextReason, onNext }: Props) {
   const correctCount = result.results.filter((r) => r.correct).length;
 
   return (
@@ -35,8 +36,10 @@ export default function BlockResult({ result, nextBlockId, onNext }: Props) {
           <button className="btn" onClick={() => onNext(nextBlockId)} type="button">
             Próximo bloco →
           </button>
-        ) : (
+        ) : nextReason === "Curso concluído." ? (
           <span className="muted">🎉 Você dominou todos os conceitos disponíveis!</span>
+        ) : (
+          <span className="muted">{nextReason || "Aprofunde seu domínio nos pré-requisitos para desbloquear novos conceitos."}</span>
         )}
         <Link href={ROUTES.graph} className="btn secondary">
           Ver mapa

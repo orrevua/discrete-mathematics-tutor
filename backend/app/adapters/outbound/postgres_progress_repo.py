@@ -137,3 +137,11 @@ class PostgresProgressRepository:
             conn.execute("DELETE FROM answer_log WHERE user_id = %s", (user_id,))
             conn.execute("DELETE FROM meta WHERE user_id = %s", (user_id,))
             conn.commit()
+
+    def clear_diagnostic_status(self, user_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "DELETE FROM meta WHERE user_id = %s AND key = 'diagnostic_done'",
+                (user_id,),
+            )
+            conn.commit()

@@ -106,3 +106,12 @@ export interface DiagnosticSubmitResponse {
   diagnostic_done: boolean;
   mastery: MasteryState;
 }
+
+export interface GeneratedQuestion {
+  id: string;
+  stem: string;
+  options: string[];
+  correct_index: number;
+  solution: string;
+  difficulty: number;
+}
