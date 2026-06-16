@@ -31,6 +31,10 @@ def recommend(
         if masteries.get(c.id, 0.0) < LEVEL_MASTERED and is_unlocked(c, masteries)
     ]
     if not candidates:
-        return None, "Curso concluído."
+        mastered_count = sum(1 for c in concepts if masteries.get(c.id, 0.0) >= LEVEL_MASTERED)
+        if mastered_count == len(concepts):
+            return None, "Curso concluído."
+        else:
+            return None, "Aprofunde seu domínio em pré-requisitos para desbloquear novos conceitos."
     best = min(candidates, key=lambda c: (masteries.get(c.id, 0.0), order[c.id]))
     return best.id, "Pré-requisitos dominados; menor domínio entre desbloqueados."
