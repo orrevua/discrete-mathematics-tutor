@@ -9,7 +9,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
-import type { AnswerResult, AnswersResponse, Block, PreviousAnswers } from "@/lib/types";
+import type { AnswerResult, AnswersResponse, Block, PreviousAnswers, PublicQuestion } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
 import BlockResult from "./BlockResult";
 import TutorChat from "./TutorChat";
