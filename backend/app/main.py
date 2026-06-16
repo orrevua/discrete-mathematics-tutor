@@ -1,15 +1,21 @@
 """Composition root: build adapters, inject them into the application service,
 and expose the FastAPI app. This is the only place that knows about concrete
-adapters — every other layer depends on abstractions.
+adapters -- every other layer depends on abstractions.
 
 Run: uvicorn app.main:app --reload  (from the backend/ directory)
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 from app.adapters.inbound.http.routes import router
 from app.adapters.outbound.memory_content_repo import MemoryContentRepository
@@ -28,7 +34,13 @@ ALLOWED_ORIGINS = [
 ]
 
 
+log = logging.getLogger(__name__)
+
+
 def build_service(settings: Settings) -> TutoringService:
+    log.info("Building service: tutor_enabled=%s model=%s base_url=%s db=%s",
+             settings.tutor_enabled, settings.tutor_model, settings.tutor_base_url,
+             "postgres" if (settings.database_url and not settings.use_sqlite) else "sqlite")
     content = MemoryContentRepository()
 
     progress: ProgressRepository

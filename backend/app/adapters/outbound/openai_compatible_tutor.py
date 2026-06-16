@@ -1,11 +1,12 @@
 """Tutor adapter for any OpenAI-compatible Chat Completions API.
 
 Defaults to Google Gemini's OpenAI-compatible endpoint (cheapest free-tier
-option). Uses only the standard library (urllib) — no extra dependency.
+option). Uses only the standard library (urllib) -- no extra dependency.
 """
 from __future__ import annotations
 
 import json
+import logging
 import urllib.error
 import urllib.request
 import uuid
@@ -13,7 +14,8 @@ from collections.abc import Sequence
 
 from app.application.dto import ChatMessage, GeneratedQuestion
 
-# Keep token cost low: cap history and output.
+log = logging.getLogger(__name__)
+
 _MAX_HISTORY = 10
 _MAX_TOKENS = 600
 _TIMEOUT_S = 30
@@ -30,17 +32,18 @@ class OpenAICompatibleTutor:
     def is_configured(self) -> bool:
         return bool(self._api_key)
 
-    def _call_api(self, messages: list[dict], max_tokens: int, *, json_mode: bool = False) -> dict:
+    def _call_api(self, messages: list[dict], max_tokens: int) -> dict:
         payload = {
             "model": self._model,
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": max_tokens,
         }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
+        url = f"{self._base_url}/chat/completions"
+        log.info("Tutor API request: model=%s url=%s messages=%d max_tokens=%d",
+                 self._model, url, len(messages), max_tokens)
         req = urllib.request.Request(
-            f"{self._base_url}/chat/completions",
+            url,
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self._api_key}",
@@ -52,20 +55,23 @@ class OpenAICompatibleTutor:
             with urllib.request.urlopen(req, timeout=_TIMEOUT_S) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", "replace")[:300]
+            detail = e.read().decode("utf-8", "replace")[:500]
+            log.error("Tutor API HTTP error %d: %s", e.code, detail)
             raise RuntimeError(f"Tutor API erro {e.code}: {detail}") from e
         except urllib.error.URLError as e:
+            log.error("Tutor API connection error: %s", e.reason)
             raise RuntimeError(f"Falha ao contatar o tutor: {e.reason}") from e
+        log.info("Tutor API response: usage=%s", data.get("usage"))
         return data
 
     def reply(self, system_prompt: str, messages: Sequence[ChatMessage]) -> str:
         history = [{"role": m.role, "content": m.content} for m in messages[-_MAX_HISTORY:]]
         api_messages = [{"role": "system", "content": system_prompt}, *history]
         data = self._call_api(api_messages, _MAX_TOKENS)
-
         try:
             return data["choices"][0]["message"]["content"].strip()
         except (KeyError, IndexError, AttributeError) as e:
+            log.error("Unexpected tutor reply structure: %s", data)
             raise RuntimeError("Resposta inesperada do tutor.") from e
 
     def generate_question(
@@ -75,34 +81,41 @@ class OpenAICompatibleTutor:
         original_question_id: str | None = None,
         incorrect_answer: str | None = None,
     ) -> GeneratedQuestion:
+        log.info("Generating question for concept=%s original_q=%s",
+                 concept_id, original_question_id)
         system_prompt = (
-            f"Você é um gerador de questões de múltipla escolha para o tópico '{concept_id}'.\n"
-            f"Gere uma nova questão sobre o conteúdo abaixo, diferente das que o usuário já respondeu.\n"
-            f"O conteúdo do conceito é:\n{concept_content}\n\n"
-            f"Seu output deve ser um objeto JSON com as seguintes chaves:\n"
-            f"  - 'stem': A pergunta em si.\n"
-            f"  - 'options': Uma lista de 4 strings para as opções de resposta.\n"
-            f"  - 'correct_index': O índice (0-3) da opção correta.\n"
-            f"  - 'solution': Uma explicação concisa da resposta correta.\n"
-            f"  - 'difficulty': Um float entre 0.3 (fácil), 0.55 (médio) e 0.8 (difícil).\n\n"
-            f"Certifique-se de que a questão seja clara, as opções plausíveis e a solução correta.\n"
-            f"Exemplo de output:\n"
-            f"```json\n{{\n  \"stem\": \"Qual é a capital da França?\",\n  \"options\": [\"Berlim\", \"Madri\", \"Paris\", \"Roma\"],\n  \"correct_index\": 2,\n  \"solution\": \"Paris é a capital da França.\",\n  \"difficulty\": 0.55\n}}\n```\n"
+            "Voce e um gerador de questoes de multipla escolha. "
+            "Responda SOMENTE com um objeto JSON valido, sem markdown, sem blocos de codigo."
+        )
+        user_prompt = (
+            f"Gere uma questao de multipla escolha sobre o topico '{concept_id}'.\n"
+            f"Conteudo do conceito:\n{concept_content}\n\n"
+            f"O JSON deve ter exatamente estas chaves:\n"
+            f"  - \"stem\": A pergunta.\n"
+            f"  - \"options\": Lista de 4 strings.\n"
+            f"  - \"correct_index\": Indice (0-3) da opcao correta.\n"
+            f"  - \"solution\": Explicacao concisa da resposta correta.\n"
+            f"  - \"difficulty\": Float entre 0.0 e 1.0.\n"
         )
         if original_question_id and incorrect_answer:
-            system_prompt += (
-                f"\nO usuário errou a questão '{original_question_id}' respondendo '{incorrect_answer}'. "
-                f"Gere uma questão que ajude a sanar a possível lacuna de conhecimento revelada por esse erro."
+            user_prompt += (
+                f"\nO aluno errou a questao '{original_question_id}' respondendo '{incorrect_answer}'. "
+                f"Gere uma questao que ajude a sanar essa lacuna de conhecimento."
             )
 
-        api_messages = [{"role": "system", "content": system_prompt}]
-        data = self._call_api(api_messages, _MAX_TOKENS * 2, json_mode=True)
+        api_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        data = self._call_api(api_messages, _MAX_TOKENS * 2)
 
         try:
-            generated_data = json.loads(data["choices"][0]["message"]["content"])
-            # Generate a unique ID for this question
+            raw_content = data["choices"][0]["message"]["content"].strip()
+            if raw_content.startswith("```"):
+                raw_content = raw_content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            generated_data = json.loads(raw_content)
             q_id = f"gen-{concept_id}-{uuid.uuid4().hex[:8]}"
-            return GeneratedQuestion(
+            result = GeneratedQuestion(
                 id=q_id,
                 stem=generated_data["stem"],
                 options=tuple(generated_data["options"]),
@@ -110,6 +123,9 @@ class OpenAICompatibleTutor:
                 solution=generated_data["solution"],
                 difficulty=generated_data["difficulty"],
             )
+            log.info("Generated question id=%s for concept=%s", q_id, concept_id)
+            return result
         except (KeyError, IndexError, AttributeError, json.JSONDecodeError) as e:
-            raise RuntimeError(f"Resposta inesperada ou malformada do tutor para geração de questão: {e}. Raw: {data}") from e
+            log.error("Failed to parse generated question: %s. Raw response: %s", e, data)
+            raise RuntimeError(f"Resposta malformada do tutor: {e}") from e
 

@@ -6,6 +6,7 @@ injected at construction -- Dependency Inversion / testable in isolation.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 
 from app.application.dto import (
@@ -23,6 +24,8 @@ from app.domain import recommendation
 from app.domain.models import Concept, ConceptMastery, Question
 from app.ports.repositories import ContentRepository, ProgressRepository
 from app.ports.tutor import TutorPort
+
+log = logging.getLogger(__name__)
 
 
 class TutoringService:
@@ -118,6 +121,7 @@ class TutoringService:
     def submit_block_answers(
         self, user_id: str, concept_id: str, answers: Iterable[tuple[str, int]]
     ) -> SubmitResult:
+        log.info("submit_block_answers user=%s concept=%s", user_id, concept_id)
         concept = self._content.get_concept(concept_id)
         if concept is None:
             raise ConceptNotFound(concept_id)
@@ -176,10 +180,12 @@ class TutoringService:
         self, concept_id: str, original_question_id: str | None = None, incorrect_answer: str | None = None
     ) -> GeneratedQuestion:
         """Generate a new question for a given concept using the tutor."""
+        log.info("generate_new_question concept=%s original_q=%s", concept_id, original_question_id)
         concept = self._content.get_concept(concept_id)
         if concept is None:
             raise ConceptNotFound(concept_id)
         if self._tutor is None or not self._tutor.is_configured():
+            log.warning("Tutor not configured for question generation")
             raise TutorNotConfigured()
         return self._tutor.generate_question(
             concept_content=concept.content,
@@ -220,6 +226,7 @@ class TutoringService:
     def submit_diagnostic(
         self, user_id: str, answers: Iterable[tuple[str, int]]
     ) -> MasteryOverview:
+        log.info("submit_diagnostic user=%s", user_id)
         by_id = {q.id: q for q in self._content.diagnostic_questions()}
         seeded: dict[str, float] = {}
         for question_id, selected_index in answers:

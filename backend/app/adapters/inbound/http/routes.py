@@ -3,6 +3,8 @@ present output. The service is injected via app.state (composition root).
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.adapters.inbound.http import presenters, schemas
@@ -10,6 +12,8 @@ from app.adapters.inbound.http.auth import get_user_id
 from app.application.dto import ChatMessage
 from app.application.errors import ConceptNotFound, InvalidAnswer, TutorNotConfigured
 from app.application.tutoring_service import TutoringService
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -130,6 +134,7 @@ def tutor(
             detail="Tutor não configurado. Defina TUTOR_API_KEY no backend/.env.",
         )
     except RuntimeError as e:
+        log.exception("Tutor reply failed for concept=%s", concept_id)
         raise HTTPException(status_code=502, detail=str(e))
 
 
@@ -139,12 +144,15 @@ def generate_question(
     payload: schemas.GenerateQuestionRequest,
     svc: TutoringService = Depends(get_service),
 ):
+    log.info("generate_question concept=%s original_q=%s", concept_id, payload.original_question_id)
     try:
-        return svc.generate_new_question(
+        result = svc.generate_new_question(
             concept_id=concept_id,
             original_question_id=payload.original_question_id,
             incorrect_answer=payload.incorrect_answer,
         )
+        log.info("generate_question success concept=%s question_id=%s", concept_id, result.id)
+        return result
     except ConceptNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except TutorNotConfigured:
@@ -153,6 +161,7 @@ def generate_question(
             detail="Tutor não configurado para geração de questões. Defina TUTOR_API_KEY no backend/.env.",
         )
     except RuntimeError as e:
+        log.exception("generate_question failed for concept=%s", concept_id)
         raise HTTPException(status_code=502, detail=str(e))
 
 
