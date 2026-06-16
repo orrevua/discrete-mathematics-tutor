@@ -169,7 +169,7 @@ export default function DashboardPage() {
         <ConfirmDangerModal
           title="Resetar progresso"
           description="Isto vai apagar permanentemente todo o seu domínio, histórico e diagnóstico. Não há como recuperar."
-          phrase={RESET_PROGRESS_PHRASE}
+          phrase={RESET_PHRASE}
           confirmLabel="Resetar progresso"
           onConfirm={handleResetProgressConfirm}
           onClose={() => setShowResetProgress(false)}

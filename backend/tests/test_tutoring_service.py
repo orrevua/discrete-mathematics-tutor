@@ -1,6 +1,8 @@
 """Service tests using a fake in-memory ProgressRepository — proving the ports
 decouple the application from SQLite (no DB needed to test use cases).
 """
+from collections.abc import Sequence
+
 from app.application.tutoring_service import TutoringService
 from app.domain.models import Concept, Question
 from app.ports.tutor import TutorPort
@@ -67,6 +69,9 @@ class FakeProgress:
     def reset(self, user_id):
         self.mastery.pop(user_id, None)
         self.log = [r for r in self.log if r[0] != user_id]
+        self.done.discard(user_id)
+
+    def clear_diagnostic_status(self, user_id):
         self.done.discard(user_id)
 
 

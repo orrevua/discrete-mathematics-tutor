@@ -63,12 +63,6 @@ class BlockResponse(BaseModel):
 class AnswerIn(BaseModel):
     question_id: str
     selected_index: int = Field(ge=0, le=3)
-    # Optional fields for dynamically generated questions
-    stem: str | None = None
-    options: list[str] | None = None
-    correct_index_gen: int | None = Field(None, ge=0, le=3, alias="correct_index") # Renamed to avoid conflict with PublicQuestion
-    solution: str | None = None
-    difficulty: float | None = Field(None, ge=0.0, le=1.0)
 
 
 class AnswerSubmission(BaseModel):

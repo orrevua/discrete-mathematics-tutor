@@ -136,7 +136,6 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         incorrectAnswerText ?? undefined,
       );
       setGeneratedQuestions((prev) => ({ ...prev, [originalQuestionId]: newQ }));
-      setAnswers((prev) => ({ ...prev, [originalQuestionId]: newQ.id })); // Mark as answered
     } catch (err: any) {
       setError(`Erro ao gerar nova questão: ${err.message}`);
     } finally {
@@ -194,8 +193,8 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         {block.questions.map((q, i) => {
           const originalQuestionId = q.id;
           const displayedQuestion = generatedQuestions[originalQuestionId] || q;
-          const feedback = feedbackFrom(result?.results, originalQuestionId);
-          const isIncorrect = feedback?.correct === false;
+          const feedback = feedbackFrom(result?.results, displayedQuestion.id);
+          const isIncorrect = feedback ? feedback.selected_index !== feedback.correct_index : false;
           const isGenerating = generatingQuestion === originalQuestionId;
 
           return (

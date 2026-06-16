@@ -11,7 +11,7 @@ import urllib.request
 import uuid
 from collections.abc import Sequence
 
-from app.application.dto import ChatMessage
+from app.application.dto import ChatMessage, GeneratedQuestion
 
 # Keep token cost low: cap history and output.
 _MAX_HISTORY = 10
@@ -30,14 +30,15 @@ class OpenAICompatibleTutor:
     def is_configured(self) -> bool:
         return bool(self._api_key)
 
-    def _call_api(self, messages: list[dict], max_tokens: int) -> dict:
+    def _call_api(self, messages: list[dict], max_tokens: int, *, json_mode: bool = False) -> dict:
         payload = {
             "model": self._model,
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": max_tokens,
-            "response_format": {"type": "json_object"}, # Request JSON output
         }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
         req = urllib.request.Request(
             f"{self._base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -95,7 +96,7 @@ class OpenAICompatibleTutor:
             )
 
         api_messages = [{"role": "system", "content": system_prompt}]
-        data = self._call_api(api_messages, _MAX_TOKENS * 2) # Allow more tokens for question generation
+        data = self._call_api(api_messages, _MAX_TOKENS * 2, json_mode=True)
 
         try:
             generated_data = json.loads(data["choices"][0]["message"]["content"])

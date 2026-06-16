@@ -4,6 +4,7 @@ import type {
   Block,
   Diagnostic,
   DiagnosticSubmitResponse,
+  GeneratedQuestion,
   Graph,
   MasteryState,
   PracticeResponse,
