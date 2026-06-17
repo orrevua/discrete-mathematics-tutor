@@ -7,13 +7,15 @@ import LevelBadge from "@/components/ui/LevelBadge";
 
 interface Props {
   result: AnswersResponse;
+  currentBlockId: string;
   nextBlockId: string | null;
   nextReason: string;
   onNext: (id: string) => void;
 }
 
-export default function BlockResult({ result, nextBlockId, nextReason, onNext }: Props) {
+export default function BlockResult({ result, currentBlockId, nextBlockId, nextReason, onNext }: Props) {
   const correctCount = result.results.filter((r) => r.correct).length;
+  const isSameBlock = nextBlockId === currentBlockId;
 
   return (
     <div>
@@ -31,16 +33,21 @@ export default function BlockResult({ result, nextBlockId, nextReason, onNext }:
         </div>
       ))}
       <div className="spacer" />
+      {nextReason && nextReason !== "Curso concluído." && (
+        <p className="muted" style={{ marginBottom: 10 }}>{nextReason}</p>
+      )}
       <div className="row">
-        {nextBlockId ? (
+        {nextBlockId && !isSameBlock ? (
           <button className="btn" onClick={() => onNext(nextBlockId)} type="button">
             Próximo bloco →
           </button>
+        ) : isSameBlock ? (
+          <button className="btn secondary" onClick={() => window.location.reload()} type="button">
+            Revisar este bloco
+          </button>
         ) : nextReason === "Curso concluído." ? (
           <span className="muted">🎉 Você dominou todos os conceitos disponíveis!</span>
-        ) : (
-          <span className="muted">{nextReason || "Aprofunde seu domínio nos pré-requisitos para desbloquear novos conceitos."}</span>
-        )}
+        ) : null}
         <Link href={ROUTES.graph} className="btn secondary">
           Ver mapa
         </Link>

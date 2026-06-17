@@ -9,7 +9,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
-import type { AnswerResult, AnswersResponse, Block, PreviousAnswers, PublicQuestion } from "@/lib/types";
+import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
 import BlockResult from "./BlockResult";
 import TutorChat from "./TutorChat";
@@ -27,8 +27,11 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [nextBlockId, setNextBlockId] = useState<string | null>(null);
   const [nextReason, setNextReason] = useState<string>("");
   const [submittingGraded, setSubmittingGraded] = useState(false);
-  const [generatingQuestion, setGeneratingQuestion] = useState<string | null>(null); // Stores qid being generated
-  const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, PublicQuestion>>({});
+
+  // generated question state
+  const [generatingQuestion, setGeneratingQuestion] = useState<string | null>(null);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion>>({});
+  const [generatedFeedback, setGeneratedFeedback] = useState<Record<string, Feedback>>({});
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -41,8 +44,11 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     setAnswers({});
     setResult(null);
     setNextBlockId(null);
+    setNextReason("");
     setPracticeAnswers({});
     setPracticeResults(null);
+    setGeneratedQuestions({});
+    setGeneratedFeedback({});
     setTutorOpen(false);
     api
       .getBlock(blockId)
@@ -53,7 +59,6 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             const restored: Record<string, number> = {};
             for (const r of prev.graded) restored[r.question_id] = r.selected_index;
             setAnswers(restored);
-            // Also restore the result and fetch the next recommendation
             setResult({ results: prev.graded, updated_concepts: [], global_percent: 0 });
             api.getRecommendation().then((rec) => {
               setNextBlockId(rec.next_block_id);
@@ -81,25 +86,13 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   if (error) return <div className="loading">{error}</div>;
   if (!block) return <div className="loading">Carregando bloco…</div>;
 
-  const allAnswered = block.questions.every((q) => {
-    const displayedQuestion = generatedQuestions[q.id] || q;
-    return answers[displayedQuestion.id] !== undefined;
-  });
+  const allAnswered = block.questions.every((q) => answers[q.id] !== undefined);
 
   const allPracticeAnswered =
     block.practice.length > 0 && block.practice.every((q) => practiceAnswers[q.id] !== undefined);
 
-  // Re-define allAnswered here to use the dynamic questions
-  const confirmPayload = block.questions.map((q) => {
-    const displayedQuestion = generatedQuestions[q.id] || q;
-    return {
-      question_id: displayedQuestion.id,
-      selected_index: answers[displayedQuestion.id],
-    };
-  });
-
-  function feedbackFrom(results: AnswerResult[] | undefined, displayedQuestionId: string): Feedback | null {
-    const r = results?.find((x) => x.question_id === displayedQuestionId);
+  function feedbackFrom(results: AnswerResult[] | undefined, questionId: string): Feedback | null {
+    const r = results?.find((x) => x.question_id === questionId);
     return r
       ? { correct_index: r.correct_index, selected_index: r.selected_index, solution: r.solution }
       : null;
@@ -107,8 +100,12 @@ export default function BlockPage({ blockId }: { blockId: string }) {
 
   async function confirm() {
     setSubmittingGraded(true);
+    const payload = block!.questions.map((q) => ({
+      question_id: q.id,
+      selected_index: answers[q.id],
+    }));
     try {
-      const res = await api.submitBlockAnswers(block!.id, confirmPayload);
+      const res = await api.submitBlockAnswers(block!.id, payload);
       setResult(res);
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
@@ -127,8 +124,10 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     if (!block) return;
     setGeneratingQuestion(originalQuestionId);
     try {
-      const incorrectAnswerText = incorrectAnswerIndex !== null ?
-        block.questions.find(q => q.id === originalQuestionId)?.options[incorrectAnswerIndex] : null;
+      const incorrectAnswerText = incorrectAnswerIndex !== null
+        ? (block.questions.find(q => q.id === originalQuestionId)?.options[incorrectAnswerIndex]
+           ?? generatedQuestions[originalQuestionId]?.options[incorrectAnswerIndex])
+        : null;
 
       const newQ = await api.generateQuestion(
         block.id,
@@ -136,11 +135,37 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         incorrectAnswerText ?? undefined,
       );
       setGeneratedQuestions((prev) => ({ ...prev, [originalQuestionId]: newQ }));
+      // Clear previous generated answer and feedback for this slot
+      setAnswers((prev) => {
+        const next = { ...prev };
+        const oldGenQ = generatedQuestions[originalQuestionId];
+        if (oldGenQ) delete next[oldGenQ.id];
+        return next;
+      });
+      setGeneratedFeedback((prev) => {
+        const next = { ...prev };
+        const oldGenQ = generatedQuestions[originalQuestionId];
+        if (oldGenQ) delete next[oldGenQ.id];
+        return next;
+      });
     } catch (err: any) {
       setError(`Erro ao gerar nova questão: ${err.message}`);
     } finally {
       setGeneratingQuestion(null);
     }
+  }
+
+  function verifyGeneratedAnswer(genQ: GeneratedQuestion) {
+    const selectedIndex = answers[genQ.id];
+    if (selectedIndex === undefined) return;
+    setGeneratedFeedback((prev) => ({
+      ...prev,
+      [genQ.id]: {
+        correct_index: genQ.correct_index,
+        selected_index: selectedIndex,
+        solution: genQ.solution,
+      },
+    }));
   }
 
   async function checkPractice() {
@@ -192,30 +217,79 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       <div className="card">
         {block.questions.map((q, i) => {
           const originalQuestionId = q.id;
-          const displayedQuestion = generatedQuestions[originalQuestionId] || q;
-          const feedback = feedbackFrom(result?.results, displayedQuestion.id);
-          const isIncorrect = feedback ? feedback.selected_index !== feedback.correct_index : false;
+          const genQ = generatedQuestions[originalQuestionId];
           const isGenerating = generatingQuestion === originalQuestionId;
+          const originalFeedback = feedbackFrom(result?.results, originalQuestionId);
+          const originalIsIncorrect = originalFeedback
+            ? originalFeedback.selected_index !== originalFeedback.correct_index
+            : false;
 
           return (
             <div key={originalQuestionId}>
+              {/* Original question: always show with its feedback */}
               <QuestionCard
-                question={displayedQuestion}
+                question={q}
                 index={i}
-                selected={answers[displayedQuestion.id] ?? null}
-                onSelect={(opt) => setAnswers((a) => ({ ...a, [displayedQuestion.id]: opt }))}
-                feedback={feedback}
+                selected={answers[q.id] ?? null}
+                onSelect={(opt) => setAnswers((a) => ({ ...a, [q.id]: opt }))}
+                feedback={originalFeedback}
               />
-              {result && isIncorrect && !generatedQuestions[originalQuestionId] && (
-                <button
-                  className="btn light-primary"
-                  onClick={() => handleGenerateQuestion(originalQuestionId, feedback?.selected_index ?? null)}
-                  disabled={isGenerating}
-                  type="button"
-                  style={{ marginTop: "10px" }}
-                >
-                  {isGenerating ? "Gerando..." : "Gerar nova questão"}
-                </button>
+
+              {/* "Gerar nova questão" button — only when incorrect and no generated question yet */}
+              {result && originalIsIncorrect && !genQ && (
+                <div aria-live="polite" aria-busy={isGenerating}>
+                  <button
+                    className="btn light-primary"
+                    onClick={() => handleGenerateQuestion(originalQuestionId, originalFeedback?.selected_index ?? null)}
+                    disabled={isGenerating}
+                    type="button"
+                    style={{ marginTop: "10px" }}
+                    aria-label={`Gerar nova questão para a questão ${i + 1}`}
+                  >
+                    {isGenerating ? "Gerando…" : "Gerar nova questão sobre este tópico"}
+                  </button>
+                </div>
+              )}
+
+              {/* Generated question: appears below original as a reinforcement exercise */}
+              {genQ && (
+                <div style={{ marginTop: "16px", paddingLeft: "16px", borderLeft: "3px solid var(--progresso, #e8a838)" }} aria-live="polite">
+                  <p className="practice-intro" style={{ marginBottom: "8px" }}>
+                    <strong>Questão de reforço</strong> — não afeta seu domínio
+                  </p>
+                  <QuestionCard
+                    question={genQ}
+                    index={i}
+                    selected={answers[genQ.id] ?? null}
+                    onSelect={(opt) => setAnswers((a) => ({ ...a, [genQ.id]: opt }))}
+                    feedback={generatedFeedback[genQ.id] ?? null}
+                  />
+                  {!generatedFeedback[genQ.id] ? (
+                    <button
+                      className="btn secondary"
+                      onClick={() => verifyGeneratedAnswer(genQ)}
+                      disabled={answers[genQ.id] === undefined}
+                      type="button"
+                      style={{ marginTop: "8px" }}
+                      aria-label={`Verificar resposta da questão de reforço ${i + 1}`}
+                    >
+                      Verificar resposta
+                    </button>
+                  ) : generatedFeedback[genQ.id].selected_index !== generatedFeedback[genQ.id].correct_index ? (
+                    <div aria-live="polite" aria-busy={isGenerating}>
+                      <button
+                        className="btn light-primary"
+                        onClick={() => handleGenerateQuestion(originalQuestionId, generatedFeedback[genQ.id].selected_index)}
+                        disabled={isGenerating}
+                        type="button"
+                        style={{ marginTop: "8px" }}
+                        aria-label={`Gerar outra questão de reforço para a questão ${i + 1}`}
+                      >
+                        {isGenerating ? "Gerando…" : "Gerar outra questão"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
           );
@@ -228,6 +302,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         ) : (
           <BlockResult
             result={result}
+            currentBlockId={blockId}
             nextBlockId={nextBlockId}
             nextReason={nextReason}
             onNext={(id) => router.push(ROUTES.block(id))}
