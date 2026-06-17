@@ -5,6 +5,7 @@ the dev server). Reset by deleting the DB file or calling reset(user_id).
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -31,6 +32,21 @@ CREATE TABLE IF NOT EXISTS meta (
   key     TEXT NOT NULL,
   value   TEXT NOT NULL,
   PRIMARY KEY (user_id, key)
+);
+CREATE TABLE IF NOT EXISTS generated_questions (
+  user_id              TEXT NOT NULL,
+  concept_id           TEXT NOT NULL,
+  original_question_id TEXT NOT NULL,
+  question_id          TEXT NOT NULL,
+  stem                 TEXT NOT NULL,
+  options              TEXT NOT NULL,
+  correct_index        INTEGER NOT NULL,
+  solution             TEXT NOT NULL,
+  difficulty           REAL NOT NULL,
+  selected_index       INTEGER,
+  correct              INTEGER,
+  created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, question_id)
 );
 """
 
@@ -145,3 +161,45 @@ class SqliteProgressRepository:
                 (user_id,),
             )
             conn.commit()
+
+    def save_generated_question(
+        self, user_id: str, concept_id: str, original_question_id: str,
+        question_id: str, stem: str, options: list[str], correct_index: int,
+        solution: str, difficulty: float, selected_index: int, correct: bool,
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO generated_questions "
+                "(user_id, concept_id, original_question_id, question_id, stem, options, "
+                "correct_index, solution, difficulty, selected_index, correct) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(user_id, question_id) DO UPDATE SET "
+                "selected_index = excluded.selected_index, correct = excluded.correct",
+                (user_id, concept_id, original_question_id, question_id, stem,
+                 json.dumps(options), correct_index, solution, difficulty,
+                 selected_index, int(correct)),
+            )
+            conn.commit()
+
+    def get_generated_questions(self, user_id: str, concept_id: str) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT original_question_id, question_id, stem, options, correct_index, "
+                "solution, difficulty, selected_index, correct FROM generated_questions "
+                "WHERE user_id = ? AND concept_id = ? ORDER BY created_at ASC",
+                (user_id, concept_id),
+            ).fetchall()
+        result = []
+        for r in rows:
+            result.append({
+                "original_question_id": r["original_question_id"],
+                "question_id": r["question_id"],
+                "stem": r["stem"],
+                "options": json.loads(r["options"]),
+                "correct_index": r["correct_index"],
+                "solution": r["solution"],
+                "difficulty": r["difficulty"],
+                "selected_index": r["selected_index"],
+                "correct": bool(r["correct"]) if r["correct"] is not None else None,
+            })
+        return result

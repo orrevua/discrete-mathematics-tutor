@@ -73,6 +73,32 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             setPracticeAnswers(restored);
             setPracticeResults(prev.practice);
           }
+          if (prev.generated && prev.generated.length > 0) {
+            const restoredGen: Record<string, GeneratedQuestion> = {};
+            const restoredFb: Record<string, Feedback> = {};
+            const restoredAns: Record<string, number> = {};
+            for (const g of prev.generated) {
+              restoredGen[g.original_question_id] = {
+                id: g.question_id,
+                stem: g.stem,
+                options: g.options,
+                correct_index: g.correct_index,
+                solution: g.solution,
+                difficulty: g.difficulty,
+              };
+              if (g.selected_index !== null && g.correct !== null) {
+                restoredAns[g.question_id] = g.selected_index;
+                restoredFb[g.question_id] = {
+                  correct_index: g.correct_index,
+                  selected_index: g.selected_index,
+                  solution: g.solution,
+                };
+              }
+            }
+            setGeneratedQuestions(restoredGen);
+            setGeneratedFeedback(restoredFb);
+            setAnswers((prev) => ({ ...prev, ...restoredAns }));
+          }
         }).catch(() => {});
       })
       .catch(() => setError("Bloco não encontrado."));
@@ -157,7 +183,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     }
   }
 
-  async function verifyGeneratedAnswer(genQ: GeneratedQuestion) {
+  async function verifyGeneratedAnswer(genQ: GeneratedQuestion, originalQuestionId: string) {
     const selectedIndex = answers[genQ.id];
     if (selectedIndex === undefined || !block) return;
     const correct = selectedIndex === genQ.correct_index;
@@ -170,7 +196,9 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       },
     }));
     try {
-      const updated = await api.recordGeneratedAnswer(block.id, genQ.id, correct, genQ.difficulty);
+      const updated = await api.recordGeneratedAnswer(
+        block.id, genQ.id, originalQuestionId, correct, selectedIndex, genQ,
+      );
       setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
@@ -298,7 +326,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
                     {!generatedFeedback[genQ.id] ? (
                       <button
                         className="btn secondary"
-                        onClick={() => verifyGeneratedAnswer(genQ)}
+                        onClick={() => verifyGeneratedAnswer(genQ, originalQuestionId)}
                         disabled={answers[genQ.id] === undefined}
                         type="button"
                         style={{ marginTop: "8px" }}
@@ -364,6 +392,8 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             nextBlockId={nextBlockId}
             nextReason={nextReason}
             onNext={(id) => router.push(ROUTES.block(id))}
+            generatedCorrect={Object.values(generatedFeedback).filter(fb => fb.selected_index === fb.correct_index).length}
+            generatedTotal={Object.values(generatedFeedback).length}
           />
         )}
       </div>

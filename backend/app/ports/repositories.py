@@ -59,3 +59,11 @@ class ProgressRepository(Protocol):
     def clear_diagnostic_status(self, user_id: str) -> None:
         """Clear the diagnostic completion status for a user."""
         ...
+
+    def save_generated_question(
+        self, user_id: str, concept_id: str, original_question_id: str,
+        question_id: str, stem: str, options: list[str], correct_index: int,
+        solution: str, difficulty: float, selected_index: int, correct: bool,
+    ) -> None: ...
+
+    def get_generated_questions(self, user_id: str, concept_id: str) -> list[dict]: ...

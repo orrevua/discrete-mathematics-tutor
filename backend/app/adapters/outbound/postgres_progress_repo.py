@@ -3,9 +3,11 @@
 Per-user progress, persistent for deployment on ephemeral hosts (e.g. Render
 free tier) backed by managed Postgres (e.g. Neon). Selected at the composition
 root when DATABASE_URL is set; SQLite remains the local default. Short-lived
-connection per call — fine for this scale.
+connection per call -- fine for this scale.
 """
 from __future__ import annotations
+
+import json
 
 import psycopg
 
@@ -32,6 +34,21 @@ CREATE TABLE IF NOT EXISTS meta (
   key     TEXT NOT NULL,
   value   TEXT NOT NULL,
   PRIMARY KEY (user_id, key)
+);
+CREATE TABLE IF NOT EXISTS generated_questions (
+  user_id              TEXT NOT NULL,
+  concept_id           TEXT NOT NULL,
+  original_question_id TEXT NOT NULL,
+  question_id          TEXT NOT NULL,
+  stem                 TEXT NOT NULL,
+  options              TEXT NOT NULL,
+  correct_index        INTEGER NOT NULL,
+  solution             TEXT NOT NULL,
+  difficulty           DOUBLE PRECISION NOT NULL,
+  selected_index       INTEGER,
+  correct              INTEGER,
+  created_at           TIMESTAMP NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, question_id)
 );
 """
 
@@ -145,3 +162,45 @@ class PostgresProgressRepository:
                 (user_id,),
             )
             conn.commit()
+
+    def save_generated_question(
+        self, user_id: str, concept_id: str, original_question_id: str,
+        question_id: str, stem: str, options: list[str], correct_index: int,
+        solution: str, difficulty: float, selected_index: int, correct: bool,
+    ) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO generated_questions "
+                "(user_id, concept_id, original_question_id, question_id, stem, options, "
+                "correct_index, solution, difficulty, selected_index, correct) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (user_id, question_id) DO UPDATE SET "
+                "selected_index = EXCLUDED.selected_index, correct = EXCLUDED.correct",
+                (user_id, concept_id, original_question_id, question_id, stem,
+                 json.dumps(options), correct_index, solution, difficulty,
+                 selected_index, int(correct)),
+            )
+            conn.commit()
+
+    def get_generated_questions(self, user_id: str, concept_id: str) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT original_question_id, question_id, stem, options, correct_index, "
+                "solution, difficulty, selected_index, correct FROM generated_questions "
+                "WHERE user_id = %s AND concept_id = %s ORDER BY created_at ASC",
+                (user_id, concept_id),
+            ).fetchall()
+        result = []
+        for r in rows:
+            result.append({
+                "original_question_id": r[0],
+                "question_id": r[1],
+                "stem": r[2],
+                "options": json.loads(r[3]),
+                "correct_index": r[4],
+                "solution": r[5],
+                "difficulty": r[6],
+                "selected_index": r[7],
+                "correct": bool(r[8]) if r[8] is not None else None,
+            })
+        return result

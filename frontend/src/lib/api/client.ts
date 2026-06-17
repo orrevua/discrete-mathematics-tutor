@@ -90,11 +90,24 @@ export const api = {
       original_question_id: originalQuestionId,
       incorrect_answer: incorrectAnswer,
     }),
-  recordGeneratedAnswer: (conceptId: string, questionId: string, correct: boolean, difficulty: number) =>
+  recordGeneratedAnswer: (
+    conceptId: string,
+    questionId: string,
+    originalQuestionId: string,
+    correct: boolean,
+    selectedIndex: number,
+    question: { stem: string; options: string[]; correct_index: number; solution: string; difficulty: number },
+  ) =>
     post<GeneratedAnswerResult>(`/blocks/${conceptId}/record_generated_answer`, {
       question_id: questionId,
+      original_question_id: originalQuestionId,
       correct,
-      difficulty,
+      selected_index: selectedIndex,
+      difficulty: question.difficulty,
+      stem: question.stem,
+      options: question.options,
+      correct_index: question.correct_index,
+      solution: question.solution,
     }),
   // Surfaces the server's detail message (e.g. "tutor não configurado").
   tutor: async (id: string, messages: TutorMessage[]): Promise<{ reply: string }> => {

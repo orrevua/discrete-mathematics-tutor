@@ -11,17 +11,21 @@ interface Props {
   nextBlockId: string | null;
   nextReason: string;
   onNext: (id: string) => void;
+  generatedCorrect?: number;
+  generatedTotal?: number;
 }
 
-export default function BlockResult({ result, currentBlockId, nextBlockId, nextReason, onNext }: Props) {
-  const correctCount = result.results.filter((r) => r.correct).length;
+export default function BlockResult({ result, currentBlockId, nextBlockId, nextReason, onNext, generatedCorrect = 0, generatedTotal = 0 }: Props) {
+  const originalCorrect = result.results.filter((r) => r.correct).length;
+  const totalCorrect = originalCorrect + generatedCorrect;
+  const totalQuestions = result.results.length + generatedTotal;
   const isSameBlock = nextBlockId === currentBlockId;
 
   return (
     <div>
       <p>
         <strong>
-          Você acertou {correctCount} de {result.results.length}.
+          Você acertou {totalCorrect} de {totalQuestions}.
         </strong>{" "}
         Domínio global: {result.global_percent}%.
       </p>

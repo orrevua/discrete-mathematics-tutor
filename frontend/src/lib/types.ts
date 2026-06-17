@@ -83,9 +83,22 @@ export interface AnswersResponse {
   global_percent: number;
 }
 
+export interface PreviousGeneratedQuestion {
+  original_question_id: string;
+  question_id: string;
+  stem: string;
+  options: string[];
+  correct_index: number;
+  solution: string;
+  difficulty: number;
+  selected_index: number | null;
+  correct: boolean | null;
+}
+
 export interface PreviousAnswers {
   graded: AnswerResult[];
   practice: AnswerResult[];
+  generated: PreviousGeneratedQuestion[];
 }
 
 export interface Diagnostic {

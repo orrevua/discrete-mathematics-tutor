@@ -77,11 +77,13 @@ def get_block_answers(
     try:
         graded = svc.get_block_answers(user_id, concept_id)
         practice = svc.get_practice_answers(user_id, concept_id)
+        generated = svc.get_generated_questions(user_id, concept_id)
     except ConceptNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     return schemas.PreviousAnswersResponse(
         graded=[presenters._result_out(o) for o in graded],
         practice=[presenters._result_out(o) for o in practice],
+        generated=[schemas.GeneratedQuestionOut(**g) for g in generated],
     )
 
 
@@ -177,8 +179,14 @@ def record_generated_answer(
             user_id=user_id,
             concept_id=concept_id,
             question_id=payload.question_id,
+            original_question_id=payload.original_question_id,
             correct=payload.correct,
             difficulty=payload.difficulty,
+            stem=payload.stem,
+            options=payload.options,
+            correct_index=payload.correct_index,
+            solution=payload.solution,
+            selected_index=payload.selected_index,
         )
         concept_mastery = next((c for c in overview.concepts if c.concept_id == concept_id), None)
         return schemas.RecordGeneratedAnswerResponse(

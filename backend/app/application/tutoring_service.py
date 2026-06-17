@@ -195,9 +195,12 @@ class TutoringService:
         )
 
     def record_generated_answer(
-        self, user_id: str, concept_id: str, question_id: str, correct: bool, difficulty: float
+        self, user_id: str, concept_id: str, question_id: str,
+        original_question_id: str, correct: bool, difficulty: float,
+        stem: str, options: list[str], correct_index: int, solution: str,
+        selected_index: int,
     ) -> MasteryOverview:
-        """Record a generated question result and update mastery."""
+        """Record a generated question result, persist it, and update mastery."""
         concept = self._content.get_concept(concept_id)
         if concept is None:
             raise ConceptNotFound(concept_id)
@@ -206,8 +209,19 @@ class TutoringService:
         current = self._progress.get_mastery(user_id, concept_id)
         new_m = mastery_engine.update(current, correct, difficulty)
         self._progress.set_mastery(user_id, concept_id, new_m)
-        self._progress.log_answer(user_id, question_id, concept_id, 0, correct, "generated")
+        self._progress.log_answer(user_id, question_id, concept_id, selected_index, correct, "generated")
+        self._progress.save_generated_question(
+            user_id=user_id, concept_id=concept_id,
+            original_question_id=original_question_id, question_id=question_id,
+            stem=stem, options=options, correct_index=correct_index,
+            solution=solution, difficulty=difficulty,
+            selected_index=selected_index, correct=correct,
+        )
         return self.get_mastery_overview(user_id)
+
+    def get_generated_questions(self, user_id: str, concept_id: str) -> list[dict]:
+        """Return persisted generated questions for a concept."""
+        return self._progress.get_generated_questions(user_id, concept_id)
 
     @staticmethod
     def _build_tutor_prompt(concept: Concept) -> str:

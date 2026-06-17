@@ -74,6 +74,14 @@ class FakeProgress:
     def clear_diagnostic_status(self, user_id):
         self.done.discard(user_id)
 
+    def save_generated_question(self, user_id, concept_id, original_question_id,
+                                question_id, stem, options, correct_index,
+                                solution, difficulty, selected_index, correct):
+        pass
+
+    def get_generated_questions(self, user_id, concept_id):
+        return []
+
 
 class FakeContent:
     def __init__(self, concepts, diagnostic=()):

@@ -97,6 +97,7 @@ class PracticeResponse(BaseModel):
 class PreviousAnswersResponse(BaseModel):
     graded: list[AnswerResultOut]
     practice: list[AnswerResultOut]
+    generated: list[GeneratedQuestionOut] = []
 
 
 class DiagnosticResponse(BaseModel):
@@ -143,8 +144,26 @@ class GenerateQuestionResponse(BaseModel):
 
 class RecordGeneratedAnswerRequest(BaseModel):
     question_id: str
+    original_question_id: str
     correct: bool
+    selected_index: int = Field(ge=0, le=3)
     difficulty: float = Field(ge=0.0, le=1.0)
+    stem: str
+    options: list[str]
+    correct_index: int = Field(ge=0, le=3)
+    solution: str
+
+
+class GeneratedQuestionOut(BaseModel):
+    original_question_id: str
+    question_id: str
+    stem: str
+    options: list[str]
+    correct_index: int
+    solution: str
+    difficulty: float
+    selected_index: int | None
+    correct: bool | None
 
 
 class RecordGeneratedAnswerResponse(BaseModel):
