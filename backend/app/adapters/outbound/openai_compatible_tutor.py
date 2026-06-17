@@ -95,7 +95,7 @@ class OpenAICompatibleTutor:
             f"  - \"options\": Lista de 4 strings.\n"
             f"  - \"correct_index\": Indice (0-3) da opcao correta.\n"
             f"  - \"solution\": Explicacao concisa da resposta correta.\n"
-            f"  - \"difficulty\": Float entre 0.0 e 1.0.\n"
+            f"  - \"difficulty\": Float entre 0.55 e 0.85 (questoes de reforco devem ter dificuldade moderada a alta).\n"
         )
         if original_question_id and incorrect_answer:
             user_prompt += (
@@ -115,13 +115,15 @@ class OpenAICompatibleTutor:
                 raw_content = raw_content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
             generated_data = json.loads(raw_content)
             q_id = f"gen-{concept_id}-{uuid.uuid4().hex[:8]}"
+            raw_diff = float(generated_data.get("difficulty", 0.6))
+            difficulty = max(0.55, min(1.0, raw_diff))
             result = GeneratedQuestion(
                 id=q_id,
                 stem=generated_data["stem"],
                 options=tuple(generated_data["options"]),
                 correct_index=generated_data["correct_index"],
                 solution=generated_data["solution"],
-                difficulty=generated_data["difficulty"],
+                difficulty=difficulty,
             )
             log.info("Generated question id=%s for concept=%s", q_id, concept_id)
             return result
