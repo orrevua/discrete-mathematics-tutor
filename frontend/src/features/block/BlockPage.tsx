@@ -32,6 +32,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [generatingQuestion, setGeneratingQuestion] = useState<string | null>(null);
   const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion>>({});
   const [generatedFeedback, setGeneratedFeedback] = useState<Record<string, Feedback>>({});
+  const [expandedOriginals, setExpandedOriginals] = useState<Record<string, boolean>>({});
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -49,6 +50,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     setPracticeResults(null);
     setGeneratedQuestions({});
     setGeneratedFeedback({});
+    setExpandedOriginals({});
     setTutorOpen(false);
     api
       .getBlock(blockId)
@@ -233,73 +235,119 @@ export default function BlockPage({ blockId }: { blockId: string }) {
           const originalIsIncorrect = originalFeedback
             ? originalFeedback.selected_index !== originalFeedback.correct_index
             : false;
+          const isOriginalExpanded = expandedOriginals[originalQuestionId] ?? false;
 
           return (
-            <div key={originalQuestionId}>
-              {/* Original question: always show with its feedback */}
-              <QuestionCard
-                question={q}
-                index={i}
-                selected={answers[q.id] ?? null}
-                onSelect={(opt) => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-                feedback={originalFeedback}
-              />
-
-              {/* "Gerar nova questão" button — only when incorrect and no generated question yet */}
-              {result && originalIsIncorrect && !genQ && (
-                <div aria-live="polite" aria-busy={isGenerating}>
-                  <button
-                    className="btn light-primary"
-                    onClick={() => handleGenerateQuestion(originalQuestionId, originalFeedback?.selected_index ?? null)}
-                    disabled={isGenerating}
-                    type="button"
-                    style={{ marginTop: "10px" }}
-                    aria-label={`Gerar nova questão para a questão ${i + 1}`}
-                  >
-                    {isGenerating ? "Gerando…" : "Gerar nova questão sobre este tópico"}
-                  </button>
-                </div>
-              )}
-
-              {/* Generated question: appears below original as a reinforcement exercise */}
-              {genQ && (
-                <div style={{ marginTop: "16px", paddingLeft: "16px", borderLeft: "3px solid var(--progresso, #e8a838)" }} aria-live="polite">
-                  <p className="practice-intro" style={{ marginBottom: "8px" }}>
-                    <strong>Questão de reforço</strong> — acerte para melhorar seu domínio
-                  </p>
-                  <QuestionCard
-                    question={genQ}
-                    index={i}
-                    selected={answers[genQ.id] ?? null}
-                    onSelect={(opt) => setAnswers((a) => ({ ...a, [genQ.id]: opt }))}
-                    feedback={generatedFeedback[genQ.id] ?? null}
-                  />
-                  {!generatedFeedback[genQ.id] ? (
+            <div key={originalQuestionId} style={{ marginBottom: "24px" }}>
+              {genQ ? (
+                <>
+                  {/* Original question collapsed into expandable balloon */}
+                  <div style={{
+                    background: "var(--bg-muted, #f5f1ec)",
+                    border: "1px solid var(--border, #e0d6cb)",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    overflow: "hidden",
+                  }}>
                     <button
-                      className="btn secondary"
-                      onClick={() => verifyGeneratedAnswer(genQ)}
-                      disabled={answers[genQ.id] === undefined}
                       type="button"
-                      style={{ marginTop: "8px" }}
-                      aria-label={`Verificar resposta da questão de reforço ${i + 1}`}
+                      onClick={() => setExpandedOriginals((prev) => ({ ...prev, [originalQuestionId]: !isOriginalExpanded }))}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "0.9rem",
+                        color: "var(--text-muted, #8a7e72)",
+                      }}
+                      aria-expanded={isOriginalExpanded}
+                      aria-label={`${isOriginalExpanded ? "Fechar" : "Ver"} questão original ${i + 1}`}
                     >
-                      Verificar resposta
+                      <span>Questão original {i + 1} — você errou esta</span>
+                      <span style={{ fontSize: "1.1rem" }}>{isOriginalExpanded ? "✕" : "▸"}</span>
                     </button>
-                  ) : generatedFeedback[genQ.id].selected_index !== generatedFeedback[genQ.id].correct_index ? (
-                    <div aria-live="polite" aria-busy={isGenerating}>
+                    {isOriginalExpanded && (
+                      <div style={{ padding: "0 14px 14px" }}>
+                        <QuestionCard
+                          question={q}
+                          index={i}
+                          selected={answers[q.id] ?? null}
+                          onSelect={() => {}}
+                          feedback={originalFeedback}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Generated question takes the original's place */}
+                  <div aria-live="polite">
+                    <p className="practice-intro" style={{ marginBottom: "8px" }}>
+                      <strong>Questão de reforço {i + 1}</strong> — acerte para melhorar seu domínio
+                    </p>
+                    <QuestionCard
+                      question={genQ}
+                      index={i}
+                      selected={answers[genQ.id] ?? null}
+                      onSelect={(opt) => setAnswers((a) => ({ ...a, [genQ.id]: opt }))}
+                      feedback={generatedFeedback[genQ.id] ?? null}
+                    />
+                    {!generatedFeedback[genQ.id] ? (
                       <button
-                        className="btn light-primary"
-                        onClick={() => handleGenerateQuestion(originalQuestionId, generatedFeedback[genQ.id].selected_index)}
-                        disabled={isGenerating}
+                        className="btn secondary"
+                        onClick={() => verifyGeneratedAnswer(genQ)}
+                        disabled={answers[genQ.id] === undefined}
                         type="button"
                         style={{ marginTop: "8px" }}
-                        aria-label={`Gerar outra questão de reforço para a questão ${i + 1}`}
+                        aria-label={`Verificar resposta da questão de reforço ${i + 1}`}
                       >
-                        {isGenerating ? "Gerando…" : "Gerar outra questão"}
+                        Verificar resposta
+                      </button>
+                    ) : generatedFeedback[genQ.id].selected_index !== generatedFeedback[genQ.id].correct_index ? (
+                      <div aria-live="polite" aria-busy={isGenerating}>
+                        <button
+                          className="btn light-primary"
+                          onClick={() => handleGenerateQuestion(originalQuestionId, generatedFeedback[genQ.id].selected_index)}
+                          disabled={isGenerating}
+                          type="button"
+                          style={{ marginTop: "8px" }}
+                          aria-label={`Gerar outra questão de reforço para a questão ${i + 1}`}
+                        >
+                          {isGenerating ? "Gerando…" : "Gerar outra questão"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Original question in its normal place */}
+                  <QuestionCard
+                    question={q}
+                    index={i}
+                    selected={answers[q.id] ?? null}
+                    onSelect={(opt) => setAnswers((a) => ({ ...a, [q.id]: opt }))}
+                    feedback={originalFeedback}
+                  />
+
+                  {/* "Gerar nova questão" button with spacing */}
+                  {result && originalIsIncorrect && (
+                    <div aria-live="polite" aria-busy={isGenerating} style={{ marginTop: "12px" }}>
+                      <button
+                        className="btn light-primary"
+                        onClick={() => handleGenerateQuestion(originalQuestionId, originalFeedback?.selected_index ?? null)}
+                        disabled={isGenerating}
+                        type="button"
+                        aria-label={`Gerar nova questão para a questão ${i + 1}`}
+                      >
+                        {isGenerating ? "Gerando…" : "Gerar nova questão sobre este tópico"}
                       </button>
                     </div>
-                  ) : null}
-                </div>
+                  )}
+                </>
               )}
             </div>
           );
