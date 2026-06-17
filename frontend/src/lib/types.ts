@@ -115,3 +115,10 @@ export interface GeneratedQuestion {
   solution: string;
   difficulty: number;
 }
+
+export interface GeneratedAnswerResult {
+  mastery: number;
+  percent: number;
+  level: string;
+  global_percent: number;
+}

@@ -194,6 +194,21 @@ class TutoringService:
             incorrect_answer=incorrect_answer,
         )
 
+    def record_generated_answer(
+        self, user_id: str, concept_id: str, question_id: str, correct: bool, difficulty: float
+    ) -> MasteryOverview:
+        """Record a generated question result and update mastery."""
+        concept = self._content.get_concept(concept_id)
+        if concept is None:
+            raise ConceptNotFound(concept_id)
+        log.info("record_generated_answer user=%s concept=%s correct=%s diff=%.2f",
+                 user_id, concept_id, correct, difficulty)
+        current = self._progress.get_mastery(user_id, concept_id)
+        new_m = mastery_engine.update(current, correct, difficulty)
+        self._progress.set_mastery(user_id, concept_id, new_m)
+        self._progress.log_answer(user_id, question_id, concept_id, 0, correct, "generated")
+        return self.get_mastery_overview(user_id)
+
     @staticmethod
     def _build_tutor_prompt(concept: Concept) -> str:
         return (

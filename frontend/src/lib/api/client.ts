@@ -4,6 +4,7 @@ import type {
   Block,
   Diagnostic,
   DiagnosticSubmitResponse,
+  GeneratedAnswerResult,
   GeneratedQuestion,
   Graph,
   MasteryState,
@@ -88,6 +89,12 @@ export const api = {
       concept_id: conceptId,
       original_question_id: originalQuestionId,
       incorrect_answer: incorrectAnswer,
+    }),
+  recordGeneratedAnswer: (conceptId: string, questionId: string, correct: boolean, difficulty: number) =>
+    post<GeneratedAnswerResult>(`/blocks/${conceptId}/record_generated_answer`, {
+      question_id: questionId,
+      correct,
+      difficulty,
     }),
   // Surfaces the server's detail message (e.g. "tutor não configurado").
   tutor: async (id: string, messages: TutorMessage[]): Promise<{ reply: string }> => {

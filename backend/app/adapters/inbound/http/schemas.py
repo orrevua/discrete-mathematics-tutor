@@ -141,6 +141,19 @@ class GenerateQuestionResponse(BaseModel):
     difficulty: float = Field(ge=0.0, le=1.0)
 
 
+class RecordGeneratedAnswerRequest(BaseModel):
+    question_id: str
+    correct: bool
+    difficulty: float = Field(ge=0.0, le=1.0)
+
+
+class RecordGeneratedAnswerResponse(BaseModel):
+    mastery: float
+    percent: int
+    level: str
+    global_percent: int
+
+
 class MeResponse(BaseModel):
     user_id: str
     email: str | None = None

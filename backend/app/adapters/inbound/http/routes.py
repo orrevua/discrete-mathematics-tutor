@@ -165,6 +165,32 @@ def generate_question(
         raise HTTPException(status_code=502, detail=str(e))
 
 
+@router.post("/blocks/{concept_id}/record_generated_answer", response_model=schemas.RecordGeneratedAnswerResponse)
+def record_generated_answer(
+    concept_id: str,
+    payload: schemas.RecordGeneratedAnswerRequest,
+    svc: TutoringService = Depends(get_service),
+    user_id: str = Depends(get_user_id),
+):
+    try:
+        overview = svc.record_generated_answer(
+            user_id=user_id,
+            concept_id=concept_id,
+            question_id=payload.question_id,
+            correct=payload.correct,
+            difficulty=payload.difficulty,
+        )
+        concept_mastery = next((c for c in overview.concepts if c.concept_id == concept_id), None)
+        return schemas.RecordGeneratedAnswerResponse(
+            mastery=concept_mastery.mastery if concept_mastery else 0.0,
+            percent=concept_mastery.percent if concept_mastery else 0,
+            level=concept_mastery.level.value if concept_mastery else "Iniciante",
+            global_percent=overview.global_percent,
+        )
+    except ConceptNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.get("/diagnostic", response_model=schemas.DiagnosticResponse)
 def get_diagnostic(svc: TutoringService = Depends(get_service)):
     return presenters.diagnostic(svc.get_diagnostic())

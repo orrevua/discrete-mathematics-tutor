@@ -155,9 +155,10 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     }
   }
 
-  function verifyGeneratedAnswer(genQ: GeneratedQuestion) {
+  async function verifyGeneratedAnswer(genQ: GeneratedQuestion) {
     const selectedIndex = answers[genQ.id];
-    if (selectedIndex === undefined) return;
+    if (selectedIndex === undefined || !block) return;
+    const correct = selectedIndex === genQ.correct_index;
     setGeneratedFeedback((prev) => ({
       ...prev,
       [genQ.id]: {
@@ -166,6 +167,15 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         solution: genQ.solution,
       },
     }));
+    try {
+      const updated = await api.recordGeneratedAnswer(block.id, genQ.id, correct, genQ.difficulty);
+      setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
+      const rec = await api.getRecommendation();
+      setNextBlockId(rec.next_block_id);
+      setNextReason(rec.reason);
+    } catch {
+      // Mastery update failed silently — feedback still shows
+    }
   }
 
   async function checkPractice() {
@@ -255,7 +265,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
               {genQ && (
                 <div style={{ marginTop: "16px", paddingLeft: "16px", borderLeft: "3px solid var(--progresso, #e8a838)" }} aria-live="polite">
                   <p className="practice-intro" style={{ marginBottom: "8px" }}>
-                    <strong>Questão de reforço</strong> — não afeta seu domínio
+                    <strong>Questão de reforço</strong> — acerte para melhorar seu domínio
                   </p>
                   <QuestionCard
                     question={genQ}
