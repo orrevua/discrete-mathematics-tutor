@@ -39,11 +39,13 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [practiceResults, setPracticeResults] = useState<AnswerResult[] | null>(null);
   const [practicing, setPracticing] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [unlockChecked, setUnlockChecked] = useState(false);
 
   useEffect(() => {
     setBlock(null);
     setError(null);
     setLocked(false);
+    setUnlockChecked(false);
     setAnswers({});
     setResult(null);
     setNextBlockId(null);
@@ -62,9 +64,9 @@ export default function BlockPage({ blockId }: { blockId: string }) {
           const concept = m.concepts.find((c) => c.id === blockId);
           if (concept && !concept.unlocked) {
             setLocked(true);
-            return;
           }
-        }).catch(() => {});
+          setUnlockChecked(true);
+        }).catch(() => setUnlockChecked(true));
         api.getPreviousAnswers(blockId).then((prev) => {
           if (prev.graded.length > 0) {
             const restored: Record<string, number> = {};
@@ -121,6 +123,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   }, []);
 
   if (error) return <div className="loading">{error}</div>;
+  if (!block || !unlockChecked) return <div className="loading">Carregando bloco…</div>;
   if (locked) return (
     <div className="loading">
       <p>🔒 Este conceito ainda não foi desbloqueado.</p>
@@ -130,7 +133,6 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       </Link>
     </div>
   );
-  if (!block) return <div className="loading">Carregando bloco…</div>;
 
   const allAnswered = block.questions.every((q) => answers[q.id] !== undefined);
 

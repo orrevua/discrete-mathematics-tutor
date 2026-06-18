@@ -21,6 +21,7 @@ const lora = Lora({
 export const metadata: Metadata = {
   title: "ITS · Fundamentos Matemáticos da Computação",
   description: "Tutor inteligente adaptativo para FMC2",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
