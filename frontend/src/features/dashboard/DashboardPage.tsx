@@ -159,7 +159,12 @@ export default function DashboardPage() {
             Resetar seu progresso apaga todo o seu domínio, o histórico de respostas e o
             diagnóstico. Esta ação não pode ser desfeita.
           </span>
-          <button className="btn danger" onClick={() => setShowResetProgress(true)} type="button">
+          <button
+            className="btn danger"
+            onClick={() => setShowResetProgress(true)}
+            disabled={mastery.global_percent === 0 && !state.diagnostic_done}
+            type="button"
+          >
             Resetar progresso
           </button>
         </div>

@@ -38,10 +38,12 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
   const [practiceResults, setPracticeResults] = useState<AnswerResult[] | null>(null);
   const [practicing, setPracticing] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     setBlock(null);
     setError(null);
+    setLocked(false);
     setAnswers({});
     setResult(null);
     setNextBlockId(null);
@@ -56,6 +58,13 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       .getBlock(blockId)
       .then((b) => {
         setBlock(b);
+        api.getMastery().then((m) => {
+          const concept = m.concepts.find((c) => c.id === blockId);
+          if (concept && !concept.unlocked) {
+            setLocked(true);
+            return;
+          }
+        }).catch(() => {});
         api.getPreviousAnswers(blockId).then((prev) => {
           if (prev.graded.length > 0) {
             const restored: Record<string, number> = {};
@@ -112,6 +121,15 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   }, []);
 
   if (error) return <div className="loading">{error}</div>;
+  if (locked) return (
+    <div className="loading">
+      <p>🔒 Este conceito ainda não foi desbloqueado.</p>
+      <p className="muted">Domine os pré-requisitos para acessá-lo.</p>
+      <Link href={ROUTES.graph} className="btn secondary" style={{ marginTop: 16 }}>
+        ← Ver mapa de conhecimento
+      </Link>
+    </div>
+  );
   if (!block) return <div className="loading">Carregando bloco…</div>;
 
   const allAnswered = block.questions.every((q) => answers[q.id] !== undefined);
