@@ -152,6 +152,7 @@ class SqliteProgressRepository:
             conn.execute("DELETE FROM mastery WHERE user_id = ?", (user_id,))
             conn.execute("DELETE FROM answer_log WHERE user_id = ?", (user_id,))
             conn.execute("DELETE FROM meta WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM generated_questions WHERE user_id = ?", (user_id,))
             conn.commit()
 
     def clear_diagnostic_status(self, user_id: str) -> None:
