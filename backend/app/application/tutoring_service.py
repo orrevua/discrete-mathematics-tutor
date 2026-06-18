@@ -177,7 +177,8 @@ class TutoringService:
         return self._tutor.reply(self._build_tutor_prompt(concept), list(messages))
 
     def generate_new_question(
-        self, concept_id: str, original_question_id: str | None = None, incorrect_answer: str | None = None
+        self, concept_id: str, original_question_id: str | None = None,
+        incorrect_answer: str | None = None, previous_stems: list[str] | None = None,
     ) -> GeneratedQuestion:
         """Generate a new question for a given concept using the tutor."""
         log.info("generate_new_question concept=%s original_q=%s", concept_id, original_question_id)
@@ -192,6 +193,7 @@ class TutoringService:
             concept_id=concept_id,
             original_question_id=original_question_id,
             incorrect_answer=incorrect_answer,
+            previous_stems=previous_stems or [],
         )
 
     def record_generated_answer(

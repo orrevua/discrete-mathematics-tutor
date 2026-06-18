@@ -80,27 +80,41 @@ class OpenAICompatibleTutor:
         concept_id: str,
         original_question_id: str | None = None,
         incorrect_answer: str | None = None,
+        previous_stems: list[str] | None = None,
     ) -> GeneratedQuestion:
         log.info("Generating question for concept=%s original_q=%s",
                  concept_id, original_question_id)
         system_prompt = (
-            "Voce e um gerador de questoes de multipla escolha. "
+            "Voce e um gerador de questoes de multipla escolha para um sistema de tutoria inteligente. "
+            "Gere questoes que exijam raciocinio, aplicacao ou analise — NUNCA perguntas puramente "
+            "definitórias como 'o que e X?' ou 'qual termo descreve Y?'. "
+            "Cada questao deve testar um aspecto DIFERENTE do topico. "
             "Responda SOMENTE com um objeto JSON valido, sem markdown, sem blocos de codigo."
         )
         user_prompt = (
             f"Gere uma questao de multipla escolha sobre o topico '{concept_id}'.\n"
             f"Conteudo do conceito:\n{concept_content}\n\n"
+            f"REGRAS:\n"
+            f"- A questao deve exigir raciocinio ou aplicacao, nao apenas memorizacao de definicoes.\n"
+            f"- Use cenarios, exemplos concretos ou situacoes-problema.\n"
+            f"- As alternativas incorretas devem ser plausíveis (erros comuns de raciocínio).\n\n"
             f"O JSON deve ter exatamente estas chaves:\n"
             f"  - \"stem\": A pergunta.\n"
             f"  - \"options\": Lista de 4 strings.\n"
             f"  - \"correct_index\": Indice (0-3) da opcao correta.\n"
             f"  - \"solution\": Explicacao concisa da resposta correta.\n"
-            f"  - \"difficulty\": Float entre 0.55 e 0.85 (questoes de reforco devem ter dificuldade moderada a alta).\n"
+            f"  - \"difficulty\": Float entre 0.55 e 0.85.\n"
         )
         if original_question_id and incorrect_answer:
             user_prompt += (
                 f"\nO aluno errou a questao '{original_question_id}' respondendo '{incorrect_answer}'. "
-                f"Gere uma questao que ajude a sanar essa lacuna de conhecimento."
+                f"Gere uma questao que ajude a sanar essa lacuna de conhecimento, "
+                f"mas abordando o conceito por um ANGULO DIFERENTE."
+            )
+        if previous_stems:
+            user_prompt += (
+                f"\n\nQUESTOES JA GERADAS (NAO repita nem reformule estas — aborde outro aspecto do topico):\n"
+                + "\n".join(f"- {s}" for s in previous_stems)
             )
 
         api_messages = [

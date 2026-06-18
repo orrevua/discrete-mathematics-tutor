@@ -28,6 +28,7 @@ class TutorPort(Protocol):
         concept_id: str,
         original_question_id: str | None = None,
         incorrect_answer: str | None = None,
+        previous_stems: list[str] | None = None,
     ) -> GeneratedQuestion:
         """Generate a new question based on the concept content and optionally a failed question."""
         ...

@@ -157,10 +157,12 @@ export default function BlockPage({ blockId }: { blockId: string }) {
            ?? generatedQuestions[originalQuestionId]?.options[incorrectAnswerIndex])
         : null;
 
+      const previousStems = Object.values(generatedQuestions).map(q => q.stem);
       const newQ = await api.generateQuestion(
         block.id,
         originalQuestionId,
         incorrectAnswerText ?? undefined,
+        previousStems,
       );
       setGeneratedQuestions((prev) => ({ ...prev, [originalQuestionId]: newQ }));
       // Clear previous generated answer and feedback for this slot

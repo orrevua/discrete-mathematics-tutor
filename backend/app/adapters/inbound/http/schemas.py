@@ -131,6 +131,7 @@ class GenerateQuestionRequest(BaseModel):
     concept_id: str
     original_question_id: str | None = None
     incorrect_answer: str | None = None
+    previous_stems: list[str] = []
 
 
 class GenerateQuestionResponse(BaseModel):

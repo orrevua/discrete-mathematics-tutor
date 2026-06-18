@@ -84,11 +84,12 @@ export const api = {
   submitDiagnostic: (answers: AnswerInput[]) =>
     post<DiagnosticSubmitResponse>("/diagnostic/submit", { answers }),
   resetDiagnostic: () => post<State>("/diagnostic/reset", {}),
-  generateQuestion: (conceptId: string, originalQuestionId?: string, incorrectAnswer?: string) =>
+  generateQuestion: (conceptId: string, originalQuestionId?: string, incorrectAnswer?: string, previousStems?: string[]) =>
     post<GeneratedQuestion>(`/blocks/${conceptId}/generate_question`, {
       concept_id: conceptId,
       original_question_id: originalQuestionId,
       incorrect_answer: incorrectAnswer,
+      previous_stems: previousStems ?? [],
     }),
   recordGeneratedAnswer: (
     conceptId: string,

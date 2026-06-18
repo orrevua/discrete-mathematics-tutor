@@ -152,6 +152,7 @@ def generate_question(
             concept_id=concept_id,
             original_question_id=payload.original_question_id,
             incorrect_answer=payload.incorrect_answer,
+            previous_stems=payload.previous_stems,
         )
         log.info("generate_question success concept=%s question_id=%s", concept_id, result.id)
         return result
