@@ -98,9 +98,9 @@ export default function LoginForm({ mode }: { mode: "sign-in" | "sign-up" }) {
             Já tem uma conta? <Link href="/auth/sign-in">Entrar</Link>
           </>
         ) : (
-          <>
-            Não tem uma conta? <Link href="/auth/sign-up">Criar conta</Link>
-          </>
+          <span style={{ color: "var(--text-muted, #888)" }}>
+            Cadastro desabilitado no momento.
+          </span>
         )}
       </p>
     </form>
