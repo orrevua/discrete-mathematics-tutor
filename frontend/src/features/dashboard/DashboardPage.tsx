@@ -9,7 +9,7 @@ import type { Graph, MasteryItem, MasteryState, State } from "@/lib/types";
 import LevelBadge from "@/components/ui/LevelBadge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import ConfirmDangerModal from "@/components/ui/ConfirmDangerModal";
-import { PiAvatar } from "@/components/pi/PiAvatar";
+import { PiWidget } from "@/components/pi/PiWidget";
 import { usePiMood } from "@/components/pi/usePiMood";
 
 interface ConceptMeta {
@@ -103,10 +103,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <PiAvatar mood={mood} size={96} />
-        <h1 style={{ margin: 0 }}>Seu progresso em FMC2</h1>
-      </div>
+      <h1>Seu progresso em FMC2</h1>
       <p className="subtitle">Fundamentos Matemáticos da Computação · tutor adaptativo</p>
 
       <div className="card">
@@ -204,6 +201,7 @@ export default function DashboardPage() {
           {toast.msg}
         </div>
       )}
+      <PiWidget mood={mood} />
     </div>
   );
 }

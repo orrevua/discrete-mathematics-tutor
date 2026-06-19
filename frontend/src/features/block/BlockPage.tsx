@@ -11,7 +11,7 @@ import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
 import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
-import { PiAvatar } from "@/components/pi/PiAvatar";
+import { PiWidget } from "@/components/pi/PiWidget";
 import { usePiMood } from "@/components/pi/usePiMood";
 import { useDisengagementDetector } from "@/components/pi/useDisengagementDetector";
 import BlockResult from "./BlockResult";
@@ -281,10 +281,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
           ← Mapa de conhecimento
         </Link>
         <div className="row" style={{ justifyContent: "space-between", marginTop: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <PiAvatar mood={mood} size={56} />
-            <h1 style={{ margin: 0 }}>{block.title}</h1>
-          </div>
+          <h1 style={{ margin: 0 }}>{block.title}</h1>
           {!tutorOpen && (
             <button className="btn secondary" onClick={() => setTutorOpen(true)} type="button">
               💬 Estudar este tópico com o tutor
@@ -477,6 +474,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         </>
       )}
       </div>
+      <PiWidget mood={mood} />
     </div>
   );
 }
