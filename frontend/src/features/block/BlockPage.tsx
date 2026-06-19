@@ -11,6 +11,9 @@ import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
 import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
+import { PiAvatar } from "@/components/pi/PiAvatar";
+import { usePiMood } from "@/components/pi/usePiMood";
+import { useDisengagementDetector } from "@/components/pi/useDisengagementDetector";
 import BlockResult from "./BlockResult";
 import TutorChat from "./TutorChat";
 
@@ -40,6 +43,9 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [practicing, setPracticing] = useState(false);
   const [locked, setLocked] = useState(false);
   const [unlockChecked, setUnlockChecked] = useState(false);
+
+  const { mood, dispatch: piDispatch } = usePiMood();
+  useDisengagementDetector(piDispatch, !locked && !!block);
 
   useEffect(() => {
     setBlock(null);
@@ -155,6 +161,16 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     try {
       const res = await api.submitBlockAnswers(block!.id, payload);
       setResult(res);
+      for (const r of res.results) {
+        if (r.correct) {
+          piDispatch({ type: 'CORRECT_ANSWER', difficulty: 0.5 });
+        } else {
+          piDispatch({ type: 'WRONG_ANSWER' });
+        }
+      }
+      if (res.updated_concepts?.some((c) => c.percent >= 75)) {
+        piDispatch({ type: 'CONCEPT_MASTERED' });
+      }
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
       setNextReason(rec.reason);
@@ -217,6 +233,11 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         solution: genQ.solution,
       },
     }));
+    if (correct) {
+      piDispatch({ type: 'CORRECT_ANSWER', difficulty: genQ.difficulty });
+    } else {
+      piDispatch({ type: 'WRONG_ANSWER' });
+    }
     try {
       const updated = await api.recordGeneratedAnswer(
         block.id, genQ.id, originalQuestionId, correct, selectedIndex, genQ,
@@ -260,7 +281,10 @@ export default function BlockPage({ blockId }: { blockId: string }) {
           ← Mapa de conhecimento
         </Link>
         <div className="row" style={{ justifyContent: "space-between", marginTop: 10 }}>
-          <h1 style={{ margin: 0 }}>{block.title}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <PiAvatar mood={mood} size={56} />
+            <h1 style={{ margin: 0 }}>{block.title}</h1>
+          </div>
           {!tutorOpen && (
             <button className="btn secondary" onClick={() => setTutorOpen(true)} type="button">
               💬 Estudar este tópico com o tutor

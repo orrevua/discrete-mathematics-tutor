@@ -9,6 +9,8 @@ import type { Graph, MasteryItem, MasteryState, State } from "@/lib/types";
 import LevelBadge from "@/components/ui/LevelBadge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import ConfirmDangerModal from "@/components/ui/ConfirmDangerModal";
+import { PiAvatar } from "@/components/pi/PiAvatar";
+import { usePiMood } from "@/components/pi/usePiMood";
 
 interface ConceptMeta {
   title: string;
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   const [showResetProgress, setShowResetProgress] = useState(false);
   const [showResetDiagnostic, setShowResetDiagnostic] = useState(false);
   const [toast, setToast] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
+  const { mood } = usePiMood();
 
   const load = useCallback(() => {
     Promise.all([api.getState(), api.getMastery(), api.getGraph()])
@@ -100,7 +103,10 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1>Seu progresso em FMC2</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <PiAvatar mood={mood} size={96} />
+        <h1 style={{ margin: 0 }}>Seu progresso em FMC2</h1>
+      </div>
       <p className="subtitle">Fundamentos Matemáticos da Computação · tutor adaptativo</p>
 
       <div className="card">
