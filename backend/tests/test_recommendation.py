@@ -1,5 +1,5 @@
 from app.domain.models import Concept
-from app.domain.recommendation import is_unlocked, recommend
+from app.domain.recommendation import compute_unlocked_set, is_unlocked, recommend
 
 
 def _c(cid, prereqs=()):
@@ -35,3 +35,15 @@ def test_recommend_complete_returns_none():
     next_id, reason = recommend(CONCEPTS, masteries)
     assert next_id is None
     assert "concluído" in reason.lower()
+
+
+def test_compute_unlocked_set_transitive():
+    masteries = {"a": 0.0, "b": 0.7}
+    unlocked = compute_unlocked_set(CONCEPTS, masteries)
+    assert unlocked == frozenset({"a"})
+
+
+def test_recommend_respects_transitive_lock():
+    masteries = {"a": 0.0, "b": 0.7}
+    next_id, _ = recommend(CONCEPTS, masteries)
+    assert next_id == "a"
