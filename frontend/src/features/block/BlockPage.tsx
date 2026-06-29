@@ -67,19 +67,20 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       .getBlock(blockId)
       .then((b) => {
         setBlock(b);
-        api.getMastery().then((m) => {
+        Promise.all([api.getMastery(), api.getPreviousAnswers(blockId)]).then(([m, prev]) => {
           const concept = m.concepts.find((c) => c.id === blockId);
           if (concept && !concept.unlocked) {
             setLocked(true);
           }
           setUnlockChecked(true);
-        }).catch(() => setUnlockChecked(true));
-        api.getPreviousAnswers(blockId).then((prev) => {
           if (prev.graded.length > 0) {
             const restored: Record<string, number> = {};
             for (const r of prev.graded) restored[r.question_id] = r.selected_index;
             setAnswers(restored);
-            setResult({ results: prev.graded, updated_concepts: [], global_percent: 0 });
+            const updatedConcepts = m.concepts
+              .filter((c) => c.id === blockId)
+              .map((c) => ({ id: c.id, mastery: c.mastery, level: c.level, percent: c.percent }));
+            setResult({ results: prev.graded, updated_concepts: updatedConcepts, global_percent: m.global_percent });
             api.getRecommendation().then((rec) => {
               setNextBlockId(rec.next_block_id);
               setNextReason(rec.reason);
@@ -118,7 +119,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             setAnswers((prev) => ({ ...prev, ...restoredAns }));
             setAllGeneratedStems(Object.values(restoredGen).map(q => q.stem));
           }
-        }).catch(() => {});
+        }).catch(() => setUnlockChecked(true));
       })
       .catch(() => setError("Bloco não encontrado."));
   }, [blockId]);
