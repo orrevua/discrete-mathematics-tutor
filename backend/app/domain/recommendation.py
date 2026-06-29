@@ -15,6 +15,21 @@ def is_unlocked(concept: Concept, masteries: Mapping[str, float]) -> bool:
     return all(masteries.get(p, 0.0) >= UNLOCK_THRESHOLD for p in concept.prerequisites)
 
 
+def compute_unlocked_set(
+    concepts: Sequence[Concept],
+    masteries: Mapping[str, float],
+) -> frozenset[str]:
+    """Return IDs of concepts that are transitively unlocked.
+
+    Requires `concepts` in topological order (prerequisites before dependents).
+    """
+    unlocked: set[str] = set()
+    for c in concepts:
+        if all(p in unlocked and masteries.get(p, 0.0) >= UNLOCK_THRESHOLD for p in c.prerequisites):
+            unlocked.add(c.id)
+    return frozenset(unlocked)
+
+
 def recommend(
     concepts: Sequence[Concept],
     masteries: Mapping[str, float],
@@ -25,10 +40,11 @@ def recommend(
     tie-break by topological order (the `concepts` sequence order).
     """
     order = {c.id: i for i, c in enumerate(concepts)}
+    unlocked = compute_unlocked_set(concepts, masteries)
     candidates = [
         c
         for c in concepts
-        if masteries.get(c.id, 0.0) < LEVEL_MASTERED and is_unlocked(c, masteries)
+        if masteries.get(c.id, 0.0) < LEVEL_MASTERED and c.id in unlocked
     ]
     if not candidates:
         mastered_count = sum(1 for c in concepts if masteries.get(c.id, 0.0) >= LEVEL_MASTERED)

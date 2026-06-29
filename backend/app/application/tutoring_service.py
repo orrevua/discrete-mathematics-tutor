@@ -64,7 +64,8 @@ class TutoringService:
     def get_mastery_overview(self, user_id: str) -> MasteryOverview:
         masteries = self._progress.get_all_mastery(user_id)
         concepts = self._content.all_concepts()
-        items = [self._snapshot(c, masteries) for c in concepts]
+        unlocked_ids = recommendation.compute_unlocked_set(concepts, masteries)
+        items = [self._snapshot(c, masteries, unlocked_ids) for c in concepts]
         return MasteryOverview(concepts=items, global_percent=self._global_percent(items))
 
     def get_recommendation(self, user_id: str) -> Recommendation:
@@ -306,22 +307,24 @@ class TutoringService:
             ))
         return outcomes
 
-    def _snapshot(self, concept: Concept, masteries: dict[str, float]) -> ConceptMastery:
+    def _snapshot(self, concept: Concept, masteries: dict[str, float], unlocked_ids: frozenset[str]) -> ConceptMastery:
         m = masteries.get(concept.id, 0.0)
         return ConceptMastery(
             concept_id=concept.id,
             mastery=m,
             level=mastery_engine.level_of(m),
             percent=mastery_engine.percent_of(m),
-            unlocked=recommendation.is_unlocked(concept, masteries),
+            unlocked=concept.id in unlocked_ids,
         )
 
     def _snapshots_for(self, user_id: str, concept_ids: set[str]) -> list[ConceptMastery]:
         masteries = self._progress.get_all_mastery(user_id)
+        concepts = self._content.all_concepts()
+        unlocked_ids = recommendation.compute_unlocked_set(concepts, masteries)
         out = []
-        for c in self._content.all_concepts():
+        for c in concepts:
             if c.id in concept_ids:
-                out.append(self._snapshot(c, masteries))
+                out.append(self._snapshot(c, masteries, unlocked_ids))
         return out
 
     @staticmethod
