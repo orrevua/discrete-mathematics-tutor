@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { LEVEL_CLASS, ROUTES, TOPIC_NAMES } from "@/lib/constants";
-import type { Graph, MasteryItem } from "@/lib/types";
+import type { Graph, GraphNode, MasteryItem } from "@/lib/types";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useGraphEdges } from "./useGraphEdges";
 
@@ -31,6 +31,25 @@ export default function GraphPage() {
   if (!graph) return <div className="loading">Carregando mapa…</div>;
 
   const masteryById = new Map(mastery.map((m) => [m.id, m]));
+  const titleById = new Map(graph.nodes.map((n) => [n.id, n.title]));
+  const dependentTitles = new Map<string, string[]>();
+  for (const node of graph.nodes) {
+    for (const pid of node.prerequisites) {
+      const list = dependentTitles.get(pid) ?? [];
+      list.push(node.title);
+      dependentTitles.set(pid, list);
+    }
+  }
+
+  function tooltipFor(node: GraphNode): string | undefined {
+    const prereqs = node.prerequisites.map((id) => titleById.get(id)).filter(Boolean) as string[];
+    const deps = dependentTitles.get(node.id) ?? [];
+    const parts: string[] = [];
+    if (prereqs.length) parts.push(`Requer: ${prereqs.join(", ")}`);
+    if (deps.length) parts.push(`Libera: ${deps.join(", ")}`);
+    return parts.length ? parts.join("\n") : undefined;
+  }
+
   const topics = [...new Set(graph.nodes.map((n) => n.topic))].sort((a, b) => a - b);
 
   return (
@@ -72,6 +91,7 @@ export default function GraphPage() {
                       ref={setNodeRef(node.id)}
                       className={`node lvl-${LEVEL_CLASS[level]} ${unlocked ? "" : "locked"}`}
                       onClick={() => unlocked && router.push(ROUTES.block(node.id))}
+                      data-tooltip={tooltipFor(node)}
                     >
                       <div className="node-title">
                         {node.title} {!unlocked && "🔒"}
