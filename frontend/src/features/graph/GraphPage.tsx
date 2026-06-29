@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { LEVEL_CLASS, ROUTES, TOPIC_NAMES } from "@/lib/constants";
@@ -8,12 +8,19 @@ import type { Graph, GraphNode, MasteryItem } from "@/lib/types";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useGraphEdges } from "./useGraphEdges";
 
+interface Tooltip {
+  text: string;
+  x: number;
+  y: number;
+}
+
 export default function GraphPage() {
   const router = useRouter();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [mastery, setMastery] = useState<MasteryItem[]>([]);
   const [globalPercent, setGlobalPercent] = useState(0);
   const [error, setError] = useState(false);
+  const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
   const { containerRef, setNodeRef, lines } = useGraphEdges(graph);
 
@@ -26,6 +33,14 @@ export default function GraphPage() {
       })
       .catch(() => setError(true));
   }, []);
+
+  const showTooltip = useCallback((e: React.MouseEvent, text: string | undefined) => {
+    if (!text) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setTooltip({ text, x: rect.left + rect.width / 2, y: rect.top - 8 });
+  }, []);
+
+  const hideTooltip = useCallback(() => setTooltip(null), []);
 
   if (error) return <div className="loading">Erro ao carregar o mapa de conhecimento.</div>;
   if (!graph) return <div className="loading">Carregando mapa…</div>;
@@ -85,13 +100,15 @@ export default function GraphPage() {
                   const m = masteryById.get(node.id);
                   const level = m?.level ?? "Iniciante";
                   const unlocked = m?.unlocked ?? false;
+                  const tip = tooltipFor(node);
                   return (
                     <div
                       key={node.id}
                       ref={setNodeRef(node.id)}
                       className={`node lvl-${LEVEL_CLASS[level]} ${unlocked ? "" : "locked"}`}
                       onClick={() => unlocked && router.push(ROUTES.block(node.id))}
-                      data-tooltip={tooltipFor(node)}
+                      onMouseEnter={(e) => showTooltip(e, tip)}
+                      onMouseLeave={hideTooltip}
                     >
                       <div className="node-title">
                         {node.title} {!unlocked && "🔒"}
@@ -107,6 +124,15 @@ export default function GraphPage() {
           ))}
         </div>
       </div>
+
+      {tooltip && (
+        <div
+          className="graph-tooltip"
+          style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
+        >
+          {tooltip.text}
+        </div>
+      )}
     </div>
   );
 }
