@@ -38,6 +38,13 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [expandedOriginals, setExpandedOriginals] = useState<Record<string, boolean>>({});
   const [allGeneratedStems, setAllGeneratedStems] = useState<string[]>([]);
 
+  // extra practice state
+  const [extraPracticeQuestion, setExtraPracticeQuestion] = useState<GeneratedQuestion | null>(null);
+  const [extraPracticeFeedback, setExtraPracticeFeedback] = useState<Feedback | null>(null);
+  const [extraPracticeSelected, setExtraPracticeSelected] = useState<number | null>(null);
+  const [extraPracticeLoading, setExtraPracticeLoading] = useState(false);
+  const [extraPracticeHistory, setExtraPracticeHistory] = useState<GeneratedQuestion[]>([]);
+
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
   const [practiceResults, setPracticeResults] = useState<AnswerResult[] | null>(null);
@@ -62,6 +69,12 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     setGeneratedQuestions({});
     setGeneratedFeedback({});
     setExpandedOriginals({});
+    setAllGeneratedStems([]);
+    setExtraPracticeQuestion(null);
+    setExtraPracticeFeedback(null);
+    setExtraPracticeSelected(null);
+    setExtraPracticeLoading(false);
+    setExtraPracticeHistory([]);
     setTutorOpen(false);
     api
       .getBlock(blockId)
@@ -96,8 +109,10 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             const restoredGen: Record<string, GeneratedQuestion> = {};
             const restoredFb: Record<string, Feedback> = {};
             const restoredAns: Record<string, number> = {};
+            const restoredExtra: GeneratedQuestion[] = [];
+            const stems: string[] = [];
             for (const g of prev.generated) {
-              restoredGen[g.original_question_id] = {
+              const gq: GeneratedQuestion = {
                 id: g.question_id,
                 stem: g.stem,
                 options: g.options,
@@ -105,19 +120,26 @@ export default function BlockPage({ blockId }: { blockId: string }) {
                 solution: g.solution,
                 difficulty: g.difficulty,
               };
-              if (g.selected_index !== null && g.correct !== null) {
-                restoredAns[g.question_id] = g.selected_index;
-                restoredFb[g.question_id] = {
-                  correct_index: g.correct_index,
-                  selected_index: g.selected_index,
-                  solution: g.solution,
-                };
+              stems.push(g.stem);
+              if (g.original_question_id === "extra-practice") {
+                restoredExtra.push(gq);
+              } else {
+                restoredGen[g.original_question_id] = gq;
+                if (g.selected_index !== null && g.correct !== null) {
+                  restoredAns[g.question_id] = g.selected_index;
+                  restoredFb[g.question_id] = {
+                    correct_index: g.correct_index,
+                    selected_index: g.selected_index,
+                    solution: g.solution,
+                  };
+                }
               }
             }
             setGeneratedQuestions(restoredGen);
             setGeneratedFeedback(restoredFb);
             setAnswers((prev) => ({ ...prev, ...restoredAns }));
-            setAllGeneratedStems(Object.values(restoredGen).map(q => q.stem));
+            setAllGeneratedStems(stems);
+            setExtraPracticeHistory(restoredExtra);
           }
         }).catch(() => setUnlockChecked(true));
       })
@@ -248,6 +270,52 @@ export default function BlockPage({ blockId }: { blockId: string }) {
         block.id, genQ.id, originalQuestionId, correct, selectedIndex, genQ,
       );
       setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
+      const rec = await api.getRecommendation();
+      setNextBlockId(rec.next_block_id);
+      setNextReason(rec.reason);
+    } catch {
+      // Mastery update failed silently — feedback still shows
+    }
+  }
+
+  async function handleExtraPractice() {
+    if (!block) return;
+    setExtraPracticeLoading(true);
+    setExtraPracticeSelected(null);
+    setExtraPracticeFeedback(null);
+    try {
+      const staticStems = block.questions.map(q => q.stem);
+      const extraStems = extraPracticeHistory.map(q => q.stem);
+      const allStems = [...staticStems, ...allGeneratedStems, ...extraStems];
+      const newQ = await api.generateQuestion(block.id, undefined, undefined, allStems);
+      setExtraPracticeQuestion(newQ);
+      setAllGeneratedStems((prev) => [...prev, newQ.stem]);
+    } catch (err: any) {
+      setError(`Erro ao gerar questão extra: ${err.message}`);
+    } finally {
+      setExtraPracticeLoading(false);
+    }
+  }
+
+  async function verifyExtraPractice() {
+    if (!extraPracticeQuestion || extraPracticeSelected === null || !block) return;
+    const correct = extraPracticeSelected === extraPracticeQuestion.correct_index;
+    setExtraPracticeFeedback({
+      correct_index: extraPracticeQuestion.correct_index,
+      selected_index: extraPracticeSelected,
+      solution: extraPracticeQuestion.solution,
+    });
+    if (correct) {
+      piDispatch({ type: 'CORRECT_ANSWER', difficulty: extraPracticeQuestion.difficulty });
+    } else {
+      piDispatch({ type: 'WRONG_ANSWER' });
+    }
+    try {
+      const updated = await api.recordGeneratedAnswer(
+        block.id, extraPracticeQuestion.id, "extra-practice", correct, extraPracticeSelected, extraPracticeQuestion,
+      );
+      setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
+      setExtraPracticeHistory((prev) => [...prev, extraPracticeQuestion!]);
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
       setNextReason(rec.reason);
@@ -434,15 +502,59 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             {submittingGraded ? "Enviando…" : "Confirmar respostas"}
           </button>
         ) : (
-          <BlockResult
-            result={result}
-            currentBlockId={blockId}
-            nextBlockId={nextBlockId}
-            nextReason={nextReason}
-            onNext={(id) => router.push(ROUTES.block(id))}
-            generatedCorrect={Object.values(generatedFeedback).filter(fb => fb.selected_index === fb.correct_index).length}
-            generatedTotal={Object.values(generatedFeedback).length}
-          />
+          <>
+            <BlockResult
+              result={result}
+              currentBlockId={blockId}
+              nextBlockId={nextBlockId}
+              nextReason={nextReason}
+              onNext={(id) => router.push(ROUTES.block(id))}
+              generatedCorrect={Object.values(generatedFeedback).filter(fb => fb.selected_index === fb.correct_index).length}
+              generatedTotal={Object.values(generatedFeedback).length}
+            />
+
+            <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "24px 0" }} />
+            <h3 style={{ marginBottom: 8 }}>Praticar mais</h3>
+            <p className="practice-intro">Gere questões extras para melhorar seu domínio neste conceito.</p>
+
+            {extraPracticeLoading && (
+              <p className="muted">Gerando questão…</p>
+            )}
+
+            {extraPracticeQuestion && !extraPracticeLoading && (
+              <div style={{ marginBottom: 16 }}>
+                <QuestionCard
+                  question={extraPracticeQuestion}
+                  index={extraPracticeHistory.length}
+                  selected={extraPracticeSelected}
+                  onSelect={(opt) => setExtraPracticeSelected(opt)}
+                  feedback={extraPracticeFeedback}
+                />
+                {!extraPracticeFeedback ? (
+                  <button
+                    className="btn secondary"
+                    onClick={verifyExtraPractice}
+                    disabled={extraPracticeSelected === null}
+                    type="button"
+                    style={{ marginTop: 8 }}
+                  >
+                    Verificar resposta
+                  </button>
+                ) : null}
+              </div>
+            )}
+
+            {(!extraPracticeLoading && (!extraPracticeQuestion || extraPracticeFeedback)) && (
+              <button
+                className="btn light-primary"
+                onClick={handleExtraPractice}
+                disabled={extraPracticeLoading}
+                type="button"
+              >
+                {extraPracticeQuestion ? "Gerar outra questão" : "Praticar mais"}
+              </button>
+            )}
+          </>
         )}
       </div>
 
