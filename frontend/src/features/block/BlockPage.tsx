@@ -36,6 +36,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [generatedQuestions, setGeneratedQuestions] = useState<Record<string, GeneratedQuestion>>({});
   const [generatedFeedback, setGeneratedFeedback] = useState<Record<string, Feedback>>({});
   const [expandedOriginals, setExpandedOriginals] = useState<Record<string, boolean>>({});
+  const [allGeneratedStems, setAllGeneratedStems] = useState<string[]>([]);
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -115,6 +116,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             setGeneratedQuestions(restoredGen);
             setGeneratedFeedback(restoredFb);
             setAnswers((prev) => ({ ...prev, ...restoredAns }));
+            setAllGeneratedStems(Object.values(restoredGen).map(q => q.stem));
           }
         }).catch(() => {});
       })
@@ -193,13 +195,15 @@ export default function BlockPage({ blockId }: { blockId: string }) {
            ?? generatedQuestions[originalQuestionId]?.options[incorrectAnswerIndex])
         : null;
 
-      const previousStems = Object.values(generatedQuestions).map(q => q.stem);
+      const staticStems = block.questions.map(q => q.stem);
+      const allStems = [...staticStems, ...allGeneratedStems];
       const newQ = await api.generateQuestion(
         block.id,
         originalQuestionId,
         incorrectAnswerText ?? undefined,
-        previousStems,
+        allStems,
       );
+      setAllGeneratedStems((prev) => [...prev, newQ.stem]);
       setGeneratedQuestions((prev) => ({ ...prev, [originalQuestionId]: newQ }));
       // Clear previous generated answer and feedback for this slot
       setAnswers((prev) => {

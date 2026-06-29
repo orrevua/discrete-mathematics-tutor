@@ -32,11 +32,11 @@ class OpenAICompatibleTutor:
     def is_configured(self) -> bool:
         return bool(self._api_key)
 
-    def _call_api(self, messages: list[dict], max_tokens: int) -> dict:
+    def _call_api(self, messages: list[dict], max_tokens: int, temperature: float = 0.3) -> dict:
         payload = {
             "model": self._model,
             "messages": messages,
-            "temperature": 0.3,
+            "temperature": temperature,
             "max_tokens": max_tokens,
         }
         url = f"{self._base_url}/chat/completions"
@@ -86,9 +86,14 @@ class OpenAICompatibleTutor:
                  concept_id, original_question_id)
         system_prompt = (
             "Voce e um gerador de questoes de multipla escolha para um sistema de tutoria inteligente. "
+            "REGRA CRITICA DE DIVERSIDADE: cada questao gerada DEVE testar um SUB-TOPICO ou HABILIDADE "
+            "diferente das questoes anteriores. Nunca repita o mesmo tema, padrao de raciocinio ou "
+            "estrutura de problema, mesmo com numeros ou nomes diferentes. "
+            "Se as questoes anteriores testam 'usar exemplo para provar caso geral', a proxima DEVE "
+            "testar algo completamente diferente (ex: diferenciar definicao de teorema, identificar "
+            "tipo de demonstracao, aplicar regra de inferencia, etc). "
             "Gere questoes que exijam raciocinio, aplicacao ou analise — NUNCA perguntas puramente "
             "definitórias como 'o que e X?' ou 'qual termo descreve Y?'. "
-            "Cada questao deve testar um aspecto DIFERENTE do topico. "
             "Responda SOMENTE com um objeto JSON valido, sem markdown, sem blocos de codigo."
         )
         user_prompt = (
@@ -97,7 +102,9 @@ class OpenAICompatibleTutor:
             f"REGRAS:\n"
             f"- A questao deve exigir raciocinio ou aplicacao, nao apenas memorizacao de definicoes.\n"
             f"- Use cenarios, exemplos concretos ou situacoes-problema.\n"
-            f"- As alternativas incorretas devem ser plausíveis (erros comuns de raciocínio).\n\n"
+            f"- As alternativas incorretas devem ser plausíveis (erros comuns de raciocínio).\n"
+            f"- VARIE o sub-topico: se questoes anteriores ja cobriram um aspecto, escolha OUTRO.\n"
+            f"- NAO gere questoes com o mesmo padrao tematico das anteriores, mesmo reformulando.\n\n"
             f"O JSON deve ter exatamente estas chaves:\n"
             f"  - \"stem\": A pergunta.\n"
             f"  - \"options\": Lista de 4 strings.\n"
@@ -109,19 +116,20 @@ class OpenAICompatibleTutor:
             user_prompt += (
                 f"\nO aluno errou a questao '{original_question_id}' respondendo '{incorrect_answer}'. "
                 f"Gere uma questao que ajude a sanar essa lacuna de conhecimento, "
-                f"mas abordando o conceito por um ANGULO DIFERENTE."
+                f"mas abordando o conceito por um ANGULO DIFERENTE — outro sub-topico, outro tipo de raciocinio."
             )
         if previous_stems:
             user_prompt += (
-                f"\n\nQUESTOES JA GERADAS (NAO repita nem reformule estas — aborde outro aspecto do topico):\n"
+                f"\n\nQUESTOES JA GERADAS (NAO repita, NAO reformule, NAO use o mesmo tema/padrao):\n"
                 + "\n".join(f"- {s}" for s in previous_stems)
+                + "\n\nA nova questao DEVE cobrir um aspecto do topico que NENHUMA das questoes acima aborda."
             )
 
         api_messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        data = self._call_api(api_messages, _MAX_TOKENS * 2)
+        data = self._call_api(api_messages, _MAX_TOKENS * 2, temperature=0.7)
 
         try:
             raw_content = data["choices"][0]["message"]["content"].strip()
