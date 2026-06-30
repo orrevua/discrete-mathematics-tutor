@@ -14,6 +14,7 @@ import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
 import { PiWidget } from "@/components/pi/PiWidget";
 import { usePiMood } from "@/components/pi/usePiMood";
 import { useDisengagementDetector } from "@/components/pi/useDisengagementDetector";
+import LevelBadge from "@/components/ui/LevelBadge";
 import BlockResult from "./BlockResult";
 import TutorChat from "./TutorChat";
 
@@ -44,6 +45,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [extraPracticeSelected, setExtraPracticeSelected] = useState<number | null>(null);
   const [extraPracticeLoading, setExtraPracticeLoading] = useState(false);
   const [extraPracticeHistory, setExtraPracticeHistory] = useState<Array<{ question: GeneratedQuestion; feedback: Feedback }>>([]);
+  const [extraHistoryExpanded, setExtraHistoryExpanded] = useState(false);
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -542,20 +544,61 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             />
 
             <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "24px 0" }} />
+            <div className="sticky-mastery-bar">
+              {result.updated_concepts.map((c) => (
+                <span key={c.id} className="row" style={{ gap: 8 }}>
+                  <span className="muted">{c.id}</span>
+                  <strong>{c.percent}%</strong>
+                  <LevelBadge level={c.level} />
+                </span>
+              ))}
+              <span className="muted" style={{ fontSize: "0.85rem" }}>Global: {result.global_percent}%</span>
+            </div>
             <h3 style={{ marginBottom: 8 }}>Praticar mais</h3>
             <p className="practice-intro">Gere questões extras para melhorar seu domínio neste conceito.</p>
 
-            {extraPracticeHistory.map((h, idx) => (
-              <div key={h.question.id} style={{ marginBottom: 16, opacity: 0.85 }}>
-                <QuestionCard
-                  question={h.question}
-                  index={idx}
-                  selected={h.feedback.selected_index}
-                  onSelect={() => {}}
-                  feedback={h.feedback}
-                />
+            {extraPracticeHistory.length > 0 && !extraHistoryExpanded && (
+              <button
+                type="button"
+                onClick={() => setExtraHistoryExpanded(true)}
+                className="extra-history-balloon"
+              >
+                <span style={{ fontSize: "1.1rem" }}>
+                  {extraPracticeHistory.filter(h => h.feedback.selected_index === h.feedback.correct_index).length}/{extraPracticeHistory.length}
+                </span>
+                <span style={{ fontSize: "0.8rem" }}>questões extras</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>ver todas ▸</span>
+              </button>
+            )}
+
+            {extraPracticeHistory.length > 0 && extraHistoryExpanded && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <span className="muted" style={{ fontSize: "0.85rem" }}>
+                    Histórico: {extraPracticeHistory.filter(h => h.feedback.selected_index === h.feedback.correct_index).length}/{extraPracticeHistory.length} corretas
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setExtraHistoryExpanded(false)}
+                    className="btn secondary"
+                    style={{ padding: "4px 12px", fontSize: "0.8rem" }}
+                  >
+                    Recolher ✕
+                  </button>
+                </div>
+                {extraPracticeHistory.map((h, idx) => (
+                  <div key={h.question.id} style={{ marginBottom: 16, opacity: 0.85 }}>
+                    <QuestionCard
+                      question={h.question}
+                      index={idx}
+                      selected={h.feedback.selected_index}
+                      onSelect={() => {}}
+                      feedback={h.feedback}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
 
             {extraPracticeLoading && (
               <p className="muted">Gerando questão…</p>

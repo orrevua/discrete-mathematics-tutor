@@ -252,6 +252,42 @@ a .concept-row:hover { border-color: var(--accent); background: var(--accent-tin
 section { margin-bottom: 8px; }
 section h2 { margin-top: 18px; }
 
+.sticky-mastery-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.extra-history-balloon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  margin-bottom: 16px;
+}
+.extra-history-balloon:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(217, 119, 87, 0.12);
+}
+
 /* ── Tutor chat ─────────────────────────────────────────────────────────── */
 .block-layout { display: flex; gap: 32px; align-items: flex-start; }
 .block-main { flex: 1; min-width: 0; }
