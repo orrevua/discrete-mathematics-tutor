@@ -281,7 +281,7 @@ section h2 { margin-top: 18px; }
   box-shadow: var(--shadow);
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
-  margin: 16px 0;
+  margin: 8px 8px 8px 0px;
 }
 .extra-history-balloon:hover {
   border-color: var(--accent);
