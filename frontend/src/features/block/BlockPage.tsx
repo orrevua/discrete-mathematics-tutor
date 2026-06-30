@@ -9,7 +9,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
-import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion } from "@/lib/types";
+import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion, Level } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
 import { PiWidget } from "@/components/pi/PiWidget";
 import { usePiMood } from "@/components/pi/usePiMood";
@@ -43,7 +43,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
   const [extraPracticeFeedback, setExtraPracticeFeedback] = useState<Feedback | null>(null);
   const [extraPracticeSelected, setExtraPracticeSelected] = useState<number | null>(null);
   const [extraPracticeLoading, setExtraPracticeLoading] = useState(false);
-  const [extraPracticeHistory, setExtraPracticeHistory] = useState<GeneratedQuestion[]>([]);
+  const [extraPracticeHistory, setExtraPracticeHistory] = useState<Array<{ question: GeneratedQuestion; feedback: Feedback }>>([]);
 
   // practice (study) state
   const [practiceAnswers, setPracticeAnswers] = useState<Record<string, number>>({});
@@ -109,7 +109,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             const restoredGen: Record<string, GeneratedQuestion> = {};
             const restoredFb: Record<string, Feedback> = {};
             const restoredAns: Record<string, number> = {};
-            const restoredExtra: GeneratedQuestion[] = [];
+            const restoredExtra: Array<{ question: GeneratedQuestion; feedback: Feedback }> = [];
             const stems: string[] = [];
             for (const g of prev.generated) {
               const gq: GeneratedQuestion = {
@@ -122,7 +122,16 @@ export default function BlockPage({ blockId }: { blockId: string }) {
               };
               stems.push(g.stem);
               if (g.original_question_id === "extra-practice") {
-                restoredExtra.push(gq);
+                if (g.selected_index !== null && g.correct !== null) {
+                  restoredExtra.push({
+                    question: gq,
+                    feedback: {
+                      correct_index: g.correct_index,
+                      selected_index: g.selected_index,
+                      solution: g.solution,
+                    },
+                  });
+                }
               } else {
                 restoredGen[g.original_question_id] = gq;
                 if (g.selected_index !== null && g.correct !== null) {
@@ -269,7 +278,13 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       const updated = await api.recordGeneratedAnswer(
         block.id, genQ.id, originalQuestionId, correct, selectedIndex, genQ,
       );
-      setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
+      setResult((prev) => {
+        if (!prev) return prev;
+        const concepts = prev.updated_concepts.map((c) =>
+          c.id === block.id ? { ...c, percent: updated.percent, level: updated.level as Level } : c,
+        );
+        return { ...prev, updated_concepts: concepts, global_percent: updated.global_percent };
+      });
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
       setNextReason(rec.reason);
@@ -285,7 +300,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     setExtraPracticeFeedback(null);
     try {
       const staticStems = block.questions.map(q => q.stem);
-      const extraStems = extraPracticeHistory.map(q => q.stem);
+      const extraStems = extraPracticeHistory.map(h => h.question.stem);
       const allStems = [...staticStems, ...allGeneratedStems, ...extraStems];
       const newQ = await api.generateQuestion(block.id, undefined, undefined, allStems);
       setExtraPracticeQuestion(newQ);
@@ -314,8 +329,21 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       const updated = await api.recordGeneratedAnswer(
         block.id, extraPracticeQuestion.id, "extra-practice", correct, extraPracticeSelected, extraPracticeQuestion,
       );
-      setResult((prev) => prev ? { ...prev, global_percent: updated.global_percent } : prev);
-      setExtraPracticeHistory((prev) => [...prev, extraPracticeQuestion!]);
+      setResult((prev) => {
+        if (!prev) return prev;
+        const concepts = prev.updated_concepts.map((c) =>
+          c.id === block.id ? { ...c, percent: updated.percent, level: updated.level as Level } : c,
+        );
+        return { ...prev, updated_concepts: concepts, global_percent: updated.global_percent };
+      });
+      setExtraPracticeHistory((prev) => [...prev, {
+        question: extraPracticeQuestion!,
+        feedback: {
+          correct_index: extraPracticeQuestion!.correct_index,
+          selected_index: extraPracticeSelected,
+          solution: extraPracticeQuestion!.solution,
+        },
+      }]);
       const rec = await api.getRecommendation();
       setNextBlockId(rec.next_block_id);
       setNextReason(rec.reason);
@@ -516,6 +544,18 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "24px 0" }} />
             <h3 style={{ marginBottom: 8 }}>Praticar mais</h3>
             <p className="practice-intro">Gere questões extras para melhorar seu domínio neste conceito.</p>
+
+            {extraPracticeHistory.map((h, idx) => (
+              <div key={h.question.id} style={{ marginBottom: 16, opacity: 0.85 }}>
+                <QuestionCard
+                  question={h.question}
+                  index={idx}
+                  selected={h.feedback.selected_index}
+                  onSelect={() => {}}
+                  feedback={h.feedback}
+                />
+              </div>
+            ))}
 
             {extraPracticeLoading && (
               <p className="muted">Gerando questão…</p>
