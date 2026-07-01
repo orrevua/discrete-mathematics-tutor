@@ -68,7 +68,7 @@ export const PIPELINE = [
   { label: "Next.js", desc: "Cliente React (App Router, RSC)" },
   { label: "FastAPI", desc: "Hexagonal: rotas → TutoringService → domínio" },
   { label: "Persistência", desc: "SQLite (dev) · Postgres/Neon (prod)" },
-  { label: "Gemini LLM", desc: "Tutor + geração via API OpenAI-compatible" },
+  { label: "OpenAI LLM", desc: "Tutor + geração via API OpenAI (gpt-4o-mini)" },
 ];
 
 export const TECH_GROUPS = [
@@ -97,8 +97,8 @@ export const TECH_GROUPS = [
   {
     group: "IA",
     items: [
-      { name: "Google Gemini", role: "gemini-2.5-flash-lite (tutor + questões)" },
-      { name: "API OpenAI-compatible", role: "Via urllib da stdlib, sem SDK" },
+      { name: "OpenAI", role: "gpt-4o-mini (tutor + questões)" },
+      { name: "API OpenAI-compatible", role: "Adapter agnóstico de provedor, via urllib da stdlib, sem SDK" },
       { name: "Tutor Socrático", role: "Prompt travado no tópico do bloco" },
       { name: "Geração dinâmica", role: "Questões com anti-repetição" },
     ],
