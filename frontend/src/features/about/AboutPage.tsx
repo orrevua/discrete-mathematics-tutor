@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { ROUTES } from "@/lib/constants";
 import { STATS } from "./content";
-import { ModelTrio, ArchitecturePipeline, ProposalSection, Roadmap } from "./AboutSections";
+import {
+  ModelTrio,
+  FeedbackReinforcement,
+  ArchitecturePipeline,
+  ProposalSection,
+  Roadmap,
+} from "./AboutSections";
 import TechGrid from "./TechGrid";
 import EwmaSection from "./EwmaSection";
 
@@ -37,6 +43,8 @@ export default function AboutPage() {
         </p>
         <ModelTrio />
       </section>
+
+      <FeedbackReinforcement />
 
       <section className="about-section">
         <h2>Arquitetura</h2>

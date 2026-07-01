@@ -33,6 +33,37 @@ export const MODELS = [
   },
 ];
 
+/** "Responde a eventos de desempenho (reforço positivo no acerto, incentivo
+ *  construtivo no erro)" — do pré-projeto. Verificado no código: feedback
+ *  imediato por cor/texto, resolução passo a passo e o mascote Pi, que reage
+ *  ao desempenho (não gera texto de encorajamento, mas muda de humor). */
+export const FEEDBACK = [
+  {
+    badge: "No acerto",
+    badgeClass: "dominado",
+    title: "Reforço positivo",
+    mech: "Feedback imediato \"✓ Correto!\" com a opção certa destacada em verde. Em questões difíceis ou ao dominar um conceito, o mascote Pi comemora.",
+    ref: "QuestionCard.tsx · usePiMood.ts",
+  },
+  {
+    badge: "No erro",
+    badgeClass: "iniciante",
+    title: "Incentivo construtivo",
+    mech: "A resposta certa é revelada sem punição — Pi fica \"preocupado\", não frustrado — convidando o aluno a entender onde errou, em vez de apenas marcar como errado.",
+    ref: "QuestionCard.tsx · usePiMood.ts",
+  },
+  {
+    badge: "Sempre",
+    badgeClass: "progresso",
+    title: "Exemplos resolvidos",
+    mech: "Uma resolução passo a passo (com fórmulas em KaTeX) só é revelada depois que o aluno responde, consolidando o aprendizado com ou sem acerto.",
+    ref: "domain/models.py · Question.solution",
+  },
+];
+
+export const FEEDBACK_NOTE =
+  "Honestidade de projeto: o reforço é majoritariamente visual/afetivo (cor, humor do mascote, resolução) — o sistema não gera frases de encorajamento por IA a cada resposta. O mascote Pi também reage ao desengajamento (trocar de aba, abandonar o bloco), ficando \"incomodado\".";
+
 export const PIPELINE = [
   { label: "Next.js", desc: "Cliente React (App Router, RSC)" },
   { label: "FastAPI", desc: "Hexagonal: rotas → TutoringService → domínio" },

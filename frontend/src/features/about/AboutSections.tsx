@@ -1,4 +1,4 @@
-import { MODELS, PIPELINE, PROPOSAL, PROPOSAL_NOTE, ROADMAP } from "./content";
+import { FEEDBACK, FEEDBACK_NOTE, MODELS, PIPELINE, PROPOSAL, PROPOSAL_NOTE, ROADMAP } from "./content";
 
 export function ModelTrio() {
   return (
@@ -12,6 +12,28 @@ export function ModelTrio() {
         </div>
       ))}
     </div>
+  );
+}
+
+export function FeedbackReinforcement() {
+  return (
+    <section className="about-section">
+      <h2>Feedback e reforço</h2>
+      <p className="subtitle">
+        O sistema responde a eventos de desempenho, como previsto no pré-projeto.
+      </p>
+      <div className="model-trio">
+        {FEEDBACK.map((f) => (
+          <div className="card" key={f.badge}>
+            <span className={`badge ${f.badgeClass}`}>{f.badge}</span>
+            <h3>{f.title}</h3>
+            <p className="model-mech">{f.mech}</p>
+            <code>{f.ref}</code>
+          </div>
+        ))}
+      </div>
+      <div className="about-note">{FEEDBACK_NOTE}</div>
+    </section>
   );
 }
 
