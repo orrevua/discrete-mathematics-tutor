@@ -9,7 +9,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { api } from "@/lib/api/client";
 import { ROUTES } from "@/lib/constants";
-import type { AnswerResult, AnswersResponse, Block, GeneratedQuestion, Level } from "@/lib/types";
+import type { AnswerResult, AnswersResponse, Block, GeneratedAnswerResult, GeneratedQuestion, PreviousGeneratedQuestion } from "@/lib/types";
 import QuestionCard, { type Feedback } from "@/components/ui/QuestionCard";
 import { PiWidget } from "@/components/pi/PiWidget";
 import { usePiMood } from "@/components/pi/usePiMood";
@@ -17,6 +17,25 @@ import { useDisengagementDetector } from "@/components/pi/useDisengagementDetect
 import LevelBadge from "@/components/ui/LevelBadge";
 import BlockResult from "./BlockResult";
 import TutorChat from "./TutorChat";
+import ExtraPracticeSection from "./ExtraPracticeSection";
+
+function toGeneratedQuestion(g: PreviousGeneratedQuestion): GeneratedQuestion {
+  return {
+    id: g.question_id,
+    stem: g.stem,
+    options: g.options,
+    correct_index: g.correct_index,
+    solution: g.solution,
+    difficulty: g.difficulty,
+  };
+}
+
+function feedbackFrom(results: AnswerResult[] | undefined, questionId: string): Feedback | null {
+  const r = results?.find((x) => x.question_id === questionId);
+  return r
+    ? { correct_index: r.correct_index, selected_index: r.selected_index, solution: r.solution }
+    : null;
+}
 
 export default function BlockPage({ blockId }: { blockId: string }) {
   const router = useRouter();
@@ -114,14 +133,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
             const restoredExtra: Array<{ question: GeneratedQuestion; feedback: Feedback }> = [];
             const stems: string[] = [];
             for (const g of prev.generated) {
-              const gq: GeneratedQuestion = {
-                id: g.question_id,
-                stem: g.stem,
-                options: g.options,
-                correct_index: g.correct_index,
-                solution: g.solution,
-                difficulty: g.difficulty,
-              };
+              const gq = toGeneratedQuestion(g);
               stems.push(g.stem);
               if (g.original_question_id === "extra-practice") {
                 if (g.selected_index !== null && g.correct !== null) {
@@ -180,13 +192,6 @@ export default function BlockPage({ blockId }: { blockId: string }) {
 
   const allPracticeAnswered =
     block.practice.length > 0 && block.practice.every((q) => practiceAnswers[q.id] !== undefined);
-
-  function feedbackFrom(results: AnswerResult[] | undefined, questionId: string): Feedback | null {
-    const r = results?.find((x) => x.question_id === questionId);
-    return r
-      ? { correct_index: r.correct_index, selected_index: r.selected_index, solution: r.solution }
-      : null;
-  }
 
   async function confirm() {
     setSubmittingGraded(true);
@@ -259,6 +264,20 @@ export default function BlockPage({ blockId }: { blockId: string }) {
     }
   }
 
+  async function refreshMasteryAndRecommendation(updated: GeneratedAnswerResult) {
+    if (!block) return;
+    setResult((prev) => {
+      if (!prev) return prev;
+      const concepts = prev.updated_concepts.map((c) =>
+        c.id === block.id ? { ...c, percent: updated.percent, level: updated.level } : c,
+      );
+      return { ...prev, updated_concepts: concepts, global_percent: updated.global_percent };
+    });
+    const rec = await api.getRecommendation();
+    setNextBlockId(rec.next_block_id);
+    setNextReason(rec.reason);
+  }
+
   async function verifyGeneratedAnswer(genQ: GeneratedQuestion, originalQuestionId: string) {
     const selectedIndex = answers[genQ.id];
     if (selectedIndex === undefined || !block) return;
@@ -280,16 +299,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       const updated = await api.recordGeneratedAnswer(
         block.id, genQ.id, originalQuestionId, correct, selectedIndex, genQ,
       );
-      setResult((prev) => {
-        if (!prev) return prev;
-        const concepts = prev.updated_concepts.map((c) =>
-          c.id === block.id ? { ...c, percent: updated.percent, level: updated.level as Level } : c,
-        );
-        return { ...prev, updated_concepts: concepts, global_percent: updated.global_percent };
-      });
-      const rec = await api.getRecommendation();
-      setNextBlockId(rec.next_block_id);
-      setNextReason(rec.reason);
+      await refreshMasteryAndRecommendation(updated);
     } catch {
       // Mastery update failed silently — feedback still shows
     }
@@ -331,13 +341,6 @@ export default function BlockPage({ blockId }: { blockId: string }) {
       const updated = await api.recordGeneratedAnswer(
         block.id, extraPracticeQuestion.id, "extra-practice", correct, extraPracticeSelected, extraPracticeQuestion,
       );
-      setResult((prev) => {
-        if (!prev) return prev;
-        const concepts = prev.updated_concepts.map((c) =>
-          c.id === block.id ? { ...c, percent: updated.percent, level: updated.level as Level } : c,
-        );
-        return { ...prev, updated_concepts: concepts, global_percent: updated.global_percent };
-      });
       setExtraPracticeHistory((prev) => [...prev, {
         question: extraPracticeQuestion!,
         feedback: {
@@ -346,9 +349,7 @@ export default function BlockPage({ blockId }: { blockId: string }) {
           solution: extraPracticeQuestion!.solution,
         },
       }]);
-      const rec = await api.getRecommendation();
-      setNextBlockId(rec.next_block_id);
-      setNextReason(rec.reason);
+      await refreshMasteryAndRecommendation(updated);
     } catch {
       // Mastery update failed silently — feedback still shows
     }
@@ -416,36 +417,19 @@ export default function BlockPage({ blockId }: { blockId: string }) {
               {genQ ? (
                 <>
                   {/* Original question collapsed into expandable balloon */}
-                  <div style={{
-                    background: "var(--bg-muted, #f5f1ec)",
-                    border: "1px solid var(--border, #e0d6cb)",
-                    borderRadius: "8px",
-                    marginBottom: "12px",
-                    overflow: "hidden",
-                  }}>
+                  <div className="original-collapse">
                     <button
                       type="button"
                       onClick={() => setExpandedOriginals((prev) => ({ ...prev, [originalQuestionId]: !isOriginalExpanded }))}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "10px 14px",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: "0.9rem",
-                        color: "var(--text-muted, #8a7e72)",
-                      }}
+                      className="original-collapse-toggle"
                       aria-expanded={isOriginalExpanded}
                       aria-label={`${isOriginalExpanded ? "Fechar" : "Ver"} questão original ${i + 1}`}
                     >
                       <span>Questão original {i + 1} — você errou esta</span>
-                      <span style={{ fontSize: "1.1rem" }}>{isOriginalExpanded ? "✕" : "▸"}</span>
+                      <span className="original-collapse-icon">{isOriginalExpanded ? "✕" : "▸"}</span>
                     </button>
                     {isOriginalExpanded && (
-                      <div style={{ padding: "0 14px 14px" }}>
+                      <div className="original-collapse-body">
                         <QuestionCard
                           question={q}
                           index={i}
@@ -554,89 +538,18 @@ export default function BlockPage({ blockId }: { blockId: string }) {
               ))}
               <span className="muted" style={{ fontSize: "0.85rem" }}>Global: {result.global_percent}%</span>
             </div>
-            <h3 style={{ marginBottom: 8 }}>Praticar mais</h3>
-            <p className="practice-intro">Gere questões extras para melhorar seu domínio neste conceito.</p>
-
-            {extraPracticeHistory.length > 0 && !extraHistoryExpanded && (
-              <button
-                type="button"
-                onClick={() => setExtraHistoryExpanded(true)}
-                className="extra-history-balloon"
-              >
-                <span style={{ fontSize: "1.1rem" }}>
-                  {extraPracticeHistory.filter(h => h.feedback.selected_index === h.feedback.correct_index).length}/{extraPracticeHistory.length}
-                </span>
-                <span style={{ fontSize: "0.8rem" }}>questões extras</span>
-                <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>ver todas ▸</span>
-              </button>
-            )}
-
-            {extraPracticeHistory.length > 0 && extraHistoryExpanded && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <span className="muted" style={{ fontSize: "0.85rem" }}>
-                    Histórico: {extraPracticeHistory.filter(h => h.feedback.selected_index === h.feedback.correct_index).length}/{extraPracticeHistory.length} corretas
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setExtraHistoryExpanded(false)}
-                    className="btn secondary"
-                    style={{ padding: "4px 12px", fontSize: "0.8rem" }}
-                  >
-                    Recolher ✕
-                  </button>
-                </div>
-                {extraPracticeHistory.map((h, idx) => (
-                  <div key={h.question.id} style={{ marginBottom: 16, opacity: 0.85 }}>
-                    <QuestionCard
-                      question={h.question}
-                      index={idx}
-                      selected={h.feedback.selected_index}
-                      onSelect={() => {}}
-                      feedback={h.feedback}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {extraPracticeLoading && (
-              <p className="muted">Gerando questão…</p>
-            )}
-
-            {extraPracticeQuestion && !extraPracticeLoading && (
-              <div style={{ marginBottom: 16 }}>
-                <QuestionCard
-                  question={extraPracticeQuestion}
-                  index={extraPracticeHistory.length}
-                  selected={extraPracticeSelected}
-                  onSelect={(opt) => setExtraPracticeSelected(opt)}
-                  feedback={extraPracticeFeedback}
-                />
-                {!extraPracticeFeedback ? (
-                  <button
-                    className="btn secondary"
-                    onClick={verifyExtraPractice}
-                    disabled={extraPracticeSelected === null}
-                    type="button"
-                    style={{ marginTop: 8 }}
-                  >
-                    Verificar resposta
-                  </button>
-                ) : null}
-              </div>
-            )}
-
-            {(!extraPracticeLoading && (!extraPracticeQuestion || extraPracticeFeedback)) && (
-              <button
-                className="btn light-primary"
-                onClick={handleExtraPractice}
-                disabled={extraPracticeLoading}
-                type="button"
-              >
-                {extraPracticeQuestion ? "Gerar outra questão" : "Praticar mais"}
-              </button>
-            )}
+            <ExtraPracticeSection
+              history={extraPracticeHistory}
+              question={extraPracticeQuestion}
+              feedback={extraPracticeFeedback}
+              selected={extraPracticeSelected}
+              loading={extraPracticeLoading}
+              expanded={extraHistoryExpanded}
+              onGenerate={handleExtraPractice}
+              onVerify={verifyExtraPractice}
+              onSelect={setExtraPracticeSelected}
+              onToggleExpanded={setExtraHistoryExpanded}
+            />
           </>
         )}
       </div>

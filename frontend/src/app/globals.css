@@ -11,6 +11,8 @@
   --text: #141413;
   --muted: #73706a;
   --faint: #b0aea5;
+  --bg-muted: #f5f1ec;
+  --text-muted: #8a7e72;
   --accent: #d97757;
   --accent-hover: #c75f3f;
   --accent-tint: rgba(217, 119, 87, 0.10);
@@ -287,6 +289,28 @@ section h2 { margin-top: 18px; }
   border-color: var(--accent);
   box-shadow: 0 2px 8px rgba(217, 119, 87, 0.12);
 }
+
+.original-collapse {
+  background: #f5f1ec;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.original-collapse-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #8a7e72;
+}
+.original-collapse-toggle .original-collapse-icon { font-size: 1.1rem; }
+.original-collapse-body { padding: 0 14px 14px; }
 
 /* ── Tutor chat ─────────────────────────────────────────────────────────── */
 .block-layout { display: flex; gap: 32px; align-items: flex-start; }

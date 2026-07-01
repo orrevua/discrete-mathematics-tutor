@@ -12,13 +12,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     setTokenProvider(getAccessToken);
 
     const supabase = getSupabase();
-    supabase.auth.getSession().then(({ data }) => {
-      console.log("[Providers] initial session:", data.session ? "exists" : "null");
+    supabase.auth.getSession().then(() => {
       setReady(true);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[Providers] auth state change:", event, session ? "has session" : "no session");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       setReady(true);
       if (event === "SIGNED_OUT" && typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
         window.location.href = "/auth/sign-in";

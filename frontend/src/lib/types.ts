@@ -132,6 +132,6 @@ export interface GeneratedQuestion {
 export interface GeneratedAnswerResult {
   mastery: number;
   percent: number;
-  level: string;
+  level: Level;
   global_percent: number;
 }
