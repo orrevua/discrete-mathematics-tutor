@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { MODELS, PIPELINE, PROPOSAL, PROPOSAL_NOTE, ROADMAP } from "./content";
 
 export function ModelTrio() {
@@ -20,13 +19,13 @@ export function ArchitecturePipeline() {
   return (
     <div className="about-pipeline">
       {PIPELINE.map((box, i) => (
-        <Fragment key={box.label}>
+        <div className="about-pipeline-step" key={box.label}>
+          {i > 0 && <span className="about-pipeline-arrow">→</span>}
           <div className="about-pipeline-box">
             <div className="pipe-label">{box.label}</div>
             <div className="pipe-desc">{box.desc}</div>
           </div>
-          {i < PIPELINE.length - 1 && <span className="about-pipeline-arrow">→</span>}
-        </Fragment>
+        </div>
       ))}
     </div>
   );

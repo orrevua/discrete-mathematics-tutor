@@ -470,24 +470,27 @@ section h2 { margin-top: 18px; }
 .about-section .card code, .model-trio code {
   background: var(--surface-2); padding: 2px 7px; border-radius: 6px;
   font-size: 0.82em; border: 1px solid var(--border);
+  display: inline-block; max-width: 100%;
+  overflow-wrap: anywhere; word-break: break-word;
 }
 
 /* ITS three-model trio */
 .model-trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
-.model-trio .card { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; }
+.model-trio .card { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; min-width: 0; }
 .model-trio h3 { font-size: 1.05rem; margin: 0; }
 .model-trio .model-mech { color: var(--muted); font-size: 0.9rem; margin: 0; }
 
 /* Architecture pipeline */
 .about-pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+.about-pipeline-step { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 180px; }
 .about-pipeline-box {
-  flex: 1; min-width: 180px;
+  flex: 1; min-width: 0;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   padding: 16px 18px; box-shadow: var(--shadow);
 }
 .about-pipeline-box .pipe-label { font-family: var(--font-sans); font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
 .about-pipeline-box .pipe-desc { color: var(--muted); font-size: 0.85rem; }
-.about-pipeline-arrow { align-self: center; color: var(--faint); font-size: 1.3rem; }
+.about-pipeline-arrow { flex: 0 0 auto; color: var(--faint); font-size: 1.3rem; }
 @media (max-width: 640px) { .about-pipeline-arrow { display: none; } }
 
 /* Tech grid */

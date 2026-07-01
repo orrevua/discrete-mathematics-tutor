@@ -35,8 +35,8 @@ export default function DiagnosticPage() {
       <div className="card">
         <h1>Diagnóstico já concluído</h1>
         <p className="muted">
-          Você já mapeou seu ponto de partida. Para refazê-lo, use &quot;Refazer diagnóstico&quot; no
-          seu painel.
+          Você já mapeou seu ponto de partida. O diagnóstico permanece registrado até que você
+          resete seu progresso no seu painel.
         </p>
         <div className="row" style={{ marginTop: 16 }}>
           <Link className="btn" href={ROUTES.dashboard}>
