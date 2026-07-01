@@ -12,6 +12,7 @@ export default function SiteHeader() {
         <Link href={ROUTES.dashboard}>Painel</Link>
         <Link href={ROUTES.graph}>Mapa</Link>
         <Link href={ROUTES.diagnostic}>Diagnóstico</Link>
+        <Link href={ROUTES.about}>Sobre</Link>
         <HeaderUser />
       </nav>
     </header>

@@ -34,5 +34,6 @@ export const ROUTES = {
   dashboard: "/",
   diagnostic: "/diagnostic",
   graph: "/graph",
+  about: "/sobre",
   block: (id: string) => `/block/${id}`,
 } as const;

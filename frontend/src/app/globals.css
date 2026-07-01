@@ -444,3 +444,83 @@ section h2 { margin-top: 18px; }
 .toast.ok { background: #eef5ea; color: #41632f; border-color: #bcd3ab; }
 .toast.err { background: #fdf0ec; color: #a3442f; border-color: #e7b9ab; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ── About page (/sobre) ────────────────────────────────────────────────── */
+.about-hero {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 72px 24px 60px;
+  text-align: center;
+  background:
+    radial-gradient(900px 460px at 50% -20%, var(--accent-tint), transparent 70%),
+    linear-gradient(180deg, #fff, var(--bg));
+  border-bottom: 1px solid var(--border);
+}
+.about-hero-inner { max-width: 720px; margin: 0 auto; }
+.about-hero h1 { font-size: 2.6rem; letter-spacing: -0.03em; margin-bottom: 12px; }
+.about-hero .about-tagline { color: var(--muted); font-size: 1.05rem; margin: 0 auto; max-width: 580px; }
+.about-kicker {
+  display: inline-block; font-family: var(--font-sans); font-size: 0.72rem;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-hover);
+  background: var(--accent-tint); padding: 5px 14px; border-radius: 999px; margin-bottom: 18px;
+}
+
+.about-section { margin: 52px 0; }
+.about-section > h2 { font-size: 1.5rem; margin-bottom: 6px; }
+.about-section .card code, .model-trio code {
+  background: var(--surface-2); padding: 2px 7px; border-radius: 6px;
+  font-size: 0.82em; border: 1px solid var(--border);
+}
+
+/* ITS three-model trio */
+.model-trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.model-trio .card { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; }
+.model-trio h3 { font-size: 1.05rem; margin: 0; }
+.model-trio .model-mech { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+/* Architecture pipeline */
+.about-pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 12px; }
+.about-pipeline-box {
+  flex: 1; min-width: 180px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; box-shadow: var(--shadow);
+}
+.about-pipeline-box .pipe-label { font-family: var(--font-sans); font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+.about-pipeline-box .pipe-desc { color: var(--muted); font-size: 0.85rem; }
+.about-pipeline-arrow { align-self: center; color: var(--faint); font-size: 1.3rem; }
+@media (max-width: 640px) { .about-pipeline-arrow { display: none; } }
+
+/* Tech grid */
+.tech-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.tech-group > h3 {
+  font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); font-weight: 600; margin: 0 0 10px; font-family: var(--font-sans);
+}
+.tech-chips { display: flex; flex-direction: column; gap: 8px; }
+.tech-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.tech-chip .tech-name { font-family: var(--font-sans); font-weight: 600; font-size: 0.9rem; }
+.tech-chip .tech-role { color: var(--muted); font-size: 0.82rem; margin-top: 1px; }
+
+/* EWMA section */
+.ewma-formula { display: flex; justify-content: center; margin: 4px 0 14px; }
+.ewma-levels { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 2px; }
+
+/* Proposal */
+.about-proposal { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.about-proposal .card h3 { margin: 0 0 6px; font-size: 1rem; }
+.about-proposal .card p { margin: 0; }
+.about-note {
+  margin-top: 14px; border-left: 3px solid var(--accent); background: var(--surface-2);
+  padding: 14px 18px; border-radius: 10px; font-size: 0.92rem;
+}
+
+/* Timeline */
+.timeline { margin-top: 8px; }
+.timeline-item { position: relative; padding: 0 0 20px 26px; border-left: 2px solid var(--border-strong); }
+.timeline-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+.timeline-item::before {
+  content: ""; position: absolute; left: -7px; top: 3px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+}
+.timeline-item h4 { font-family: var(--font-sans); font-size: 0.95rem; margin: 0 0 2px; }
+.timeline-item p { color: var(--muted); font-size: 0.88rem; margin: 0; }
